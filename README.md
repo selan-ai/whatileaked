@@ -1,28 +1,69 @@
 # whatileaked
 
 Your coding agent saves every conversation to your disk. If you ever pasted an
-API key, or asked it to read a `.env` file, that key is sitting in a log file —
-and it was uploaded to Anthropic or OpenAI when you sent the message.
+API key into a chat, or asked the agent to read a `.env` file, that key is now
+sitting in a log file on your laptop — and it was uploaded to Anthropic or
+OpenAI the moment you sent the message.
 
-Secret scanners point at repositories and CI. You can aim one at `~/.claude`
-by hand, but nobody does — it is not a repo, it is not in CI, and it does not
-look like a place credentials live. It is.
+Secret scanners point at repositories and CI. You can aim one at `~/.claude` by
+hand, but nobody does — it is not a repo, it is not in CI, and it does not look
+like a place credentials live. It is.
 
-```
+This tool looks there and tells you what it finds.
+
+---
+
+## Install it
+
+You don't. Open a terminal and run:
+
+```sh
 npx whatileaked scan
 ```
 
-## Commands
+`npx` comes with Node.js. It downloads the tool, runs it once, and does not
+install anything permanently.
 
-| Command | What it does |
-| --- | --- |
-| `whatileaked` | Shows this list. Does nothing else. |
-| `whatileaked scan` | Finds credentials in your transcripts. Read-only. |
-| `whatileaked wipe` | Replaces them with a placeholder. Rewrites files, asks first. |
+**No Node.js?** Check with `node --version`. If that errors, install Node from
+[nodejs.org](https://nodejs.org) (any version 20 or newer) and try again.
 
-Takes about 20 seconds for a year of history. No flags, no config file.
+If you'd rather keep it around:
 
-## What `scan` tells you
+```sh
+npm install -g whatileaked   # then just: whatileaked scan
+```
+
+---
+
+## Run it
+
+There are two commands and no options.
+
+```sh
+npx whatileaked scan    # look, and tell you. Changes nothing.
+npx whatileaked wipe    # remove what it found. Asks before touching anything.
+```
+
+Running `npx whatileaked` with no command just lists them.
+
+A scan takes about 20 seconds for a year of history. It reads files, and that
+is all — no network connection is made at any point.
+
+---
+
+## Reading the output
+
+### When it finds nothing
+
+```
+  scanned 561 transcripts · 197,016 messages
+
+No credentials found.
+```
+
+Nothing to do. This is the good outcome.
+
+### When it finds something
 
 ```
   scanned 561 transcripts · 196,986 messages
@@ -43,38 +84,56 @@ Takes about 20 seconds for a year of history. No flags, no config file.
 3 credentials sent to a model provider.
 ```
 
-Reading a finding, left to right:
+Every line, explained:
 
-- **`aws-access-token`** — which kind of credential. These are
-  [gitleaks](https://github.com/gitleaks/gitleaks) rule names, so you can look
-  any of them up.
-- **`f0b93847`** — a fingerprint, *not* the secret. It is a shortened SHA-256 of
-  the value, so the same key shows the same code everywhere it leaked. Two rows
-  with the same code are one credential you reused; two different codes are two
-  different credentials.
-- **`billing-api`** — the project you were working in.
-- **`sent 25 times`** — how many messages carried it. A key pasted into a long
-  conversation gets re-sent with every following message.
-- **`const SECOND_AWS_KEY = '***`** — the text just before it, with the secret
-  itself masked. This is how you tell a real credential from a test fixture
-  without opening anything.
-- The path is the transcript to open if you want to see the full context.
+| Part | Means |
+| --- | --- |
+| `* aws-access-token` | The kind of credential. These names come from [gitleaks](https://github.com/gitleaks/gitleaks), so you can search any of them. |
+| `2 secrets` | How many *different* credentials of that kind. |
+| `f0b93847` | A fingerprint — **not** the secret. See below. |
+| `billing-api` | The project folder you were working in at the time. |
+| `sent 25 times` | How many messages carried it. One paste gets re-sent with every later message in the conversation. |
+| `const SECOND_AWS_KEY = '***` | The text right before the secret, with the secret blanked out. This is how you judge it. |
+| `~/.claude/projects/…` | The file to open if you want the whole story. |
 
-## Is it real, or just a test fixture?
+**What is a fingerprint?** A short one-way hash of the secret. The tool never
+prints the credential itself — not even the first few characters — because you
+might paste this output somewhere public. The fingerprint is still useful: the
+same credential always produces the same code, so two rows sharing a code are
+one key you reused in two places, and two different codes are two different
+keys.
 
-Some findings will be fake — a credential-shaped string in a test file is still
-credential-shaped, and no scanner can tell the difference. Three things help:
+---
 
-1. **Read the masked context line.** `const TEST_KEY = ***` is a fixture.
+## Is it a real key, or just a test fixture?
+
+Some findings will be fake. A credential-shaped string in a test file is still
+credential-shaped, and no scanner can tell them apart. You can:
+
+1. **Read the masked line.** `const TEST_KEY = ***` is a fixture.
    `AWS_ACCESS_KEY_ID=***` probably is not.
-2. **Look for a repeated fingerprint.** The same code under several projects is
-   a credential you actually reused.
-3. **Open the file.** The path is right there.
+2. **Look for a repeated fingerprint.** The same code under several different
+   projects is a credential you genuinely reused.
+3. **Open the file.** The path is printed for exactly this.
 
-Published example keys are already excluded — AWS's own `AKIAIOSFODNN7EXAMPLE`
-is never reported.
+Well-known example keys are already filtered out — AWS's own published
+`AKIAIOSFODNN7EXAMPLE` is never reported.
 
-## What `wipe` does
+---
+
+## Found something real. Now what?
+
+**Rotate the key first.** Log into AWS, GitHub, wherever it came from, and issue
+a new one. This matters more than anything below: the old key has already left
+your machine, and deleting your local copy does not call it back.
+
+**Then, if you want, clean your disk:**
+
+```sh
+npx whatileaked wipe
+```
+
+It shows you every file it would touch, then stops and waits:
 
 ```
   replacing credentials in your local transcripts with a placeholder
@@ -95,61 +154,81 @@ is never reported.
   Type wipe to rewrite these files, or anything else to stop:
 ```
 
-It shows you every file first, then waits. You have to type the word `wipe` —
-`y` will not do it, and a piped or scripted run cannot answer at all, so
-`yes | whatileaked wipe` does nothing.
+You must type the full word `wipe`. Pressing `y` does nothing, and a scripted
+run cannot answer at all — `yes | whatileaked wipe` changes no files.
 
 Each secret becomes `[REDACTED BY whatileaked: aws-access-token]`. Only the
-lines holding a secret change; the rest of the file is untouched, and it stays
-valid JSON so your agent can still read its own history.
+lines containing a secret change, the rest of the file is untouched, and the
+file stays valid so your agent can still read its own history.
 
-**Wiping does not fix the leak.** The credential already reached a model
-provider. Rotate it. Wiping only stops the next person with access to your
-laptop from finding it.
+---
 
-## What it will not do
+## When something goes wrong
 
-- **It never prints a secret.** Findings carry a rule name and a fingerprint.
-  There is no field anywhere in this codebase that can hold a credential value.
-- **It never makes a network request.** Not for results, not to check for
-  updates. Nothing leaves your machine.
-- **It writes nothing** unless you run `wipe`.
-- **It has no dependencies.** `npm install` adds one package: this one.
+| What you see | What it means | What to do |
+| --- | --- | --- |
+| `command not found: npx` | Node.js isn't installed. | Install it from [nodejs.org](https://nodejs.org). |
+| `unknown command "..." — expected "scan" or "wipe"` | A typo. | Check the spelling. |
+| `scanned 0 transcripts` | No agent history where it looked. | You may not use Claude Code or Codex, or history lives elsewhere. See *Where it looks*. |
+| `N messages could not be scanned` | Some entries were unreadable and were skipped. | The count is shown so a partial scan never looks like a clean one. Please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
+| `Not confirmed. Nothing was changed.` | `wipe` didn't get the word `wipe`. | Expected. Nothing was touched. |
+| It seems stuck | A big history takes ~20 seconds. | Give it a minute before worrying. |
 
-## Where it looks
-
-| Agent | Path |
-| --- | --- |
-| Claude Code | `~/.claude/projects/**/*.jsonl` |
-| Codex | `~/.codex/sessions/**/*.jsonl` |
-
-Adding another agent is one small file — pull requests welcome.
-
-## Exit codes
+**Exit codes**, if you want to script it:
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Nothing found |
 | `1` | Credentials found |
-| `2` | Something went wrong |
+| `2` | An error |
 
-So you can use it as a CI gate: `npx whatileaked scan || echo "found something"`.
+```sh
+npx whatileaked scan || echo "found something"
+```
+
+---
+
+## Where it looks
+
+| Agent | Folder |
+| --- | --- |
+| Claude Code | `~/.claude/projects/` |
+| Codex | `~/.codex/sessions/` |
+
+Nowhere else. It does not read your repos, your shell history, or your
+environment. Adding support for another agent is one small file — pull requests
+welcome.
+
+---
+
+## What it will never do
+
+- **Print a secret.** Findings carry a rule name and a fingerprint. No type in
+  this codebase has a field that can hold a credential value.
+- **Make a network request.** Not for results, not to check for updates.
+  Nothing leaves your machine, ever.
+- **Write anything** — unless you run `wipe` and type the word.
+- **Pull in dependencies.** Installing it adds exactly one package: this one.
+
+---
 
 ## Disclosure
 
-Built by [Selan](https://selan.ai), and Selan sells a proxy that redacts these
-before they leave your machine — so we have an obvious interest in you finding
-a big number here.
+Built by [Selan](https://selan.ai). Selan sells a proxy that redacts these
+before they leave your machine, so we have an obvious interest in you finding a
+big number here.
 
 The scanner is a few hundred lines with no dependencies. Read
-`src/scan/scanner.ts` and check.
+`src/scan/scanner.ts` and check for yourself.
+
+---
 
 ## Contributing
 
-Node 24+ to develop (the tests read the TypeScript sources directly). The
-published bundle is plain JavaScript and runs on Node 20+.
+Node 24+ to develop (tests read the TypeScript sources directly). The published
+build is plain JavaScript and runs on Node 20+.
 
-```
+```sh
 pnpm install
 pnpm test
 pnpm typecheck
@@ -157,8 +236,8 @@ pnpm lint
 ```
 
 Detection rules come from [gitleaks](https://github.com/gitleaks/gitleaks),
-used unmodified. `pnpm gen:secret-rules` regenerates them from upstream.
-`docs/design.md` explains how the scanner works and why it is built this way.
+used unmodified; `pnpm gen:secret-rules` regenerates them from upstream.
+`docs/design.md` covers how the scanner works and why it is built this way.
 
 ## License
 
