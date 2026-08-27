@@ -1,0 +1,56 @@
+{
+  "name": "whatileaked",
+  "version": "0.1.0",
+  "description": "Scan your local Claude Code and Codex transcripts for credentials you already sent to a model provider.",
+  "type": "module",
+  "imports": {
+    "#scripts/*": "./scripts/*.ts",
+    "#*": "./src/*.ts"
+  },
+  "license": "MIT",
+  "bin": {
+    "whatileaked": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "dev": "node src/cli.ts",
+    "build": "tsc --noEmit && tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "format": "biome check --write",
+    "lint": "biome check",
+    "gen:secret-rules": "node scripts/generate-secret-rules.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.8",
+    "@types/node": "^24.0.0",
+    "rregex": "^1.13.1",
+    "smol-toml": "^1.3.1",
+    "tsup": "^8.4.0",
+    "typescript": "7.0.2",
+    "zod": "^4.3.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/selan-ai/whatileaked.git"
+  },
+  "homepage": "https://github.com/selan-ai/whatileaked",
+  "keywords": [
+    "secrets",
+    "gitleaks",
+    "claude-code",
+    "codex",
+    "security",
+    "cli",
+    "credentials"
+  ],
+  "bugs": {
+    "url": "https://github.com/selan-ai/whatileaked/issues"
+  }
+}
