@@ -1,309 +1,177 @@
-# whatileaked — design
+# How whatileaked works, and why
 
-A CLI that scans local coding-agent transcripts for credentials and reports how
-many were transmitted to a model provider. Open source, run with `npx`, no
-network, no telemetry, read-only.
+This is the reasoning behind the code, not a tour of it. Anything that would go
+stale the moment a file moves — file trees, type definitions, signatures — is
+deliberately absent. Read the source for those.
 
-It exists to make an invisible problem countable: gitleaks scans your repo,
-nothing scans `~/.claude`. Every secret in a transcript was uploaded.
+## What it is
 
-## Scope
+A CLI that reads local Claude Code and Codex transcripts, matches them against
+the gitleaks rule set, and reports which credentials were transmitted to a
+model provider. A second command replaces those credentials with a placeholder.
 
-**v1 does one thing:** discover transcripts, scan them, print findings grouped
-by rule with the session and project each came from.
+It makes no network request, has no configuration, and has no runtime
+dependencies.
 
-Explicitly out of v1:
+## The claim it makes, and the one it does not
 
-- `--clean` (rewriting local transcripts). Destructive, and unproven rules
-  should be beaten on by strangers before they edit anyone's history.
-- Flags of any kind. The command takes no arguments.
-- Any network call, including version checks.
-- Any file write. stdout only.
+Selan redacts credentials in flight. It cannot un-write a transcript, so with
+Selan in place those secrets would *still be on disk* — what changes is that
+none of them reach the provider.
 
-## Claim discipline
+So the output says **transmitted**, never **stored**. The narrower claim
+survives a hostile reader; the broad one does not, and this tool exists to be
+posted somewhere hostile readers live.
 
-Selan redacts in flight, so with Selan those secrets would still sit in the
-local `.jsonl`. What changes is that none of them reach the provider. The
-output says *transmitted*, never *stored*, and the README says the same. The
-narrower claim survives a hostile reader; the broad one does not.
+## Nothing may carry a secret
 
-## Prior art, and why not "agentleaks"
+No type in the codebase has a field that can hold a credential value. Not the
+value, not a prefix, not a four-character preview. A finding carries a rule
+name and a truncated SHA-256.
 
-Three projects already hold that name: `Privatris/AgentLeak` (IEEE-paper
-benchmark for multi-agent privacy leakage), `yagobski/agentleak` (runtime
-execution-trace auditing), and `Thomas-E-Lewis/agentleaks`. All scan agent
-*frameworks* at runtime — CrewAI, LangChain, AutoGen. None reads the transcript
-files a coding agent already wrote to your disk, which is the whole of what this
-does.
+This is not caution for its own sake. The output is designed to be screenshotted
+into a public thread, and a preview of an AWS key's first four characters would
+be `AKIA` whether the key is live or invented — all risk, no information.
 
-Different problem, but the name would have lost anyway: a forum reader sees
-"agentleaks" and thinks of the one with the paper behind it. `whatileaked` says
-the thing is about your own machine, and `npx whatileaked` is the pitch in one
-command.
+The one exception is deliberate and narrow: redaction has to know which string
+to replace, so the scanner has a single method that returns secret values. It is
+called only by `wipe`, the result lives in memory long enough to rewrite one
+line, and it is never printed, logged, stored, or handed to a reporter.
 
-## Disclosure
+What *is* shown is the masked text preceding the secret. `const TEST_KEY = ***`
+answers "is this real?" instantly; a fingerprint alone never could.
 
-whatileaked is built by Selan (selan.ai), and Selan sells the thing that fixes
-what it finds. That is stated plainly in the README's opening and in one line
-under the CLI output:
+## Detection
 
-```
-Built by Selan (selan.ai) — we make a proxy that redacts these before they leave
-your machine. This tool sends nothing anywhere; read scan/scanner.ts.
-```
+Rules come from gitleaks, unmodified, generated into a source file by a script
+that fetches upstream. Three rules are dropped, each with its reason recorded in
+the generated file: two fire constantly on ordinary source code, one matches
+paths rather than text.
 
-One line, disclosed first rather than discovered later. A commercial tool that
-volunteers its own conflict of interest gets argued with on the merits; one
-caught hiding it gets dismissed on the spot, and the thread is the whole point
-of the project.
+Three things make a full sweep fast enough to be worth running:
 
-The disclosure is a constant in `report/disclosure.ts`, so it is one edit and
-one snapshot test rather than a string scattered through the reporter.
+- **One combined keyword pass.** Asking ~200 rules individually whether their
+  keyword appears meant ~700 separate passes over the text — tens of gigabytes
+  of scanning for one machine's history. A single alternation walks it once.
+- **Rules only see a window.** A keyword hit says where a candidate is, so a
+  rule runs over 512 characters around it rather than over a 144KB line.
+- **Input is chunked.** No single match runs over a whole transcript line.
 
-## Layout
-
-```
-src/
-  cli.ts                     entry; calls main(), maps errors to exit codes
-  main.ts                    composition root — every collaborator built here
-  sources/
-    source.ts                Source interface + SourceName enum
-    claude-code-source.ts    ~/.claude/projects/**/*.jsonl
-    codex-source.ts          ~/.codex/sessions/**/*.jsonl
-    home.ts                  resolves $HOME once, injected
-  transcript/
-    entry.ts                 zod schemas for one jsonl line, per source
-    reader.ts                file -> AsyncIterable<TranscriptEntry>
-    text.ts                  entry -> the strings worth scanning
-  scan/
-    secret-rules.ts          GENERATED from gitleaks — do not edit
-    keyword-index.ts         one combined prefilter pass over the rule set
-    entropy.ts               Shannon entropy of a string
-    fingerprint.ts           sha256(secret) truncated to 12 hex
-    scanner.ts               Scanner.scan(text) -> Match[]
-  report/
-    reporter.ts              Reporter interface
-    terminal-reporter.ts
-    aggregate.ts             Finding[] -> per-rule totals and distinct counts
-scripts/
-  generate-secret-rules.ts   fetches gitleaks.toml, emits secret-rules.ts
-```
-
-Files are small and named for what they do. There is no `utils/` — a helper
-lives in a file named after its job (`entropy.ts`, `fingerprint.ts`), because a
-junk drawer is where cohesion goes to die.
-
-## Types
-
-`Match` is what the scanner returns for one string. `Finding` is a match plus
-where it was found. The reporter aggregates; the scanner never counts.
-
-```ts
-export const sourceNameSchema = z.enum(['claude-code', 'codex'])
-export type SourceName = z.infer<typeof sourceNameSchema>
-export const SourceName = sourceNameSchema.enum
-
-export interface Match {
-  rule: string
-  fingerprint: string
-}
-
-export interface Finding {
-  rule: string
-  fingerprint: string
-  source: SourceName
-  project: string
-  sessionId: string
-  file: string
-  entryIndex: number
-}
-```
-
-No field on either type can carry the secret. Not the value, not a prefix, not
-a four-character preview — this is the object that gets printed and pasted into
-a public forum thread.
-
-Every parameter is required. Absence is stated in the type (`gitBranch: string
-| null`), never elided with `?`.
-
-## Interfaces
-
-```ts
-export interface Source {
-  readonly name: SourceName
-  discover(): AsyncIterable<TranscriptFile>
-}
-
-export interface Reporter {
-  report(findings: readonly Finding[], scanned: ScanStats): void
-}
-```
-
-`main.ts` holds the source array and the reporter. Adding Cursor is one class
-and one array entry; adding JSON output is one class. Nothing constructs its
-own dependencies and nothing reads a singleton.
-
-## Transcript parsing
-
-Both agents write jsonl, one entry per line, both carrying a session id and a
-working directory:
-
-- **Claude Code** — `~/.claude/projects/<slug>/<sessionId>.jsonl`. Entries have
-  `sessionId`, `cwd`, `type`, `message`.
-- **Codex** — `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<id>.jsonl`. The first
-  line is `type: "session_meta"` carrying `payload.id` and `payload.cwd`;
-  the rest are `response_item` / `event_msg`.
-
-Each source owns its own zod schema and normalises to a common
-`TranscriptEntry`. Parsing is `safeParse` per line: an unrecognised line is
-skipped and counted, never thrown on. These formats change without notice and a
-scanner that dies on an unknown line is a scanner nobody runs twice.
-
-`text.ts` flattens an entry to the strings worth scanning — message content,
-tool inputs, tool results — so the scanner never learns what a transcript is.
-
-## Scanner
-
-Modelled on Selan's own request-path scanner, minus everything read-only mode does not
-need: no redaction, no failure mode, no resume, no worker pool.
-
-Kept, because each earns its place:
-
-- **Keyword prefilter as one combined alternation.** Asking 219 rules
-  individually is ~220 passes over the text; one pass answers for all of them.
-- **A linear-time engine, not `RegExp`.** Gitleaks patterns are written for
-  Go's RE2, so they use no backreferences or lookaround and compile verbatim on
-  any RE2-class engine. See the engine note below for which one and why.
-- **Entropy gate.** `[a-z0-9]{32}` matches a checksum as readily as a key.
-- **Upstream allowlists.** Omitting them flags AWS's own published example key.
-- **Base64 sweep.** Encoded blobs are everywhere in agent payloads and hide a
-  credential from every rule above.
-
-Rules are generated, with the gitleaks source URL and its MIT notice in the
-header. A rule fix is a re-run of the generator, not an edit.
-
-Single-threaded in v1. If a full sweep is slow enough to notice, a worker pool
-is a later change behind the same `Scanner` interface.
-
-## Output
-
-```
-whatileaked — 1,204 transcripts, 2 sources
-
-  aws-access-token         7   (3 distinct)
-    billing-api    0a3f8c21…  entry 412
-    dcp            7b1e9d04…  entry 88
-  github-pat              11   (1 distinct)
-    deploy-tool      c40a1f77…  entry 19
-
-20 credentials transmitted to Anthropic and OpenAI.
-```
-
-`project` is the transcript's `cwd` basename, not the full path — enough to
-find it, short enough to read. Real names still print, which is the known cost
-of shipping no flags; `--anonymize` is the later fix.
-
-The disclosure line sits under the results — see below.
-
-## Testing
-
-Jest, unit tests beside the code, one concern per test.
-
-- **`scan/`** — a case per rule class (aws, github, anthropic, openai, generic
-  high-entropy), plus the negatives that matter: an allowlisted example key, a
-  low-entropy checksum, a base64 blob with a key inside it. Fingerprints are
-  asserted stable across runs, and asserted absent from every output string.
-- **`transcript/`** — real-shaped fixture lines per source, plus a truncated
-  line, an unknown `type`, and invalid JSON. All three are skipped and counted.
-- **`sources/`** — discovery against a temp directory tree, `$HOME` injected.
-- **`report/`** — aggregation counts (total vs distinct fingerprints) and a
-  snapshot of the rendered report.
-
-**Fixture secrets are generated at test time from a fixed seed, not committed.**
-Committing strings that trip 219 credential rules means GitHub's own secret
-scanning opens alerts on the repo, and it makes the project look like exactly
-the thing it warns about.
-
-## Why not the native `re2`
-
-The obvious engine for gitleaks patterns is the native `re2` package. This
-project cannot use it, and the reason is the distribution strategy rather than
-anything about matching.
-
-`re2` is a native addon whose `.node` binary is fetched by a postinstall
-script. Recent npm blocks install scripts by default, and with them blocked
-`re2` fails to load outright — verified: `npm i --ignore-scripts re2` then
-requiring it throws `Cannot find module './build/Release/re2.node'`. A tool
-whose entire distribution is `npx whatileaked` cannot have an install step that
-a default npm setting breaks.
-
-That ruled out native engines and pointed at WebAssembly, then at JavaScript's
-own engine — see below for how that went.
+Also kept, because each earns it: an entropy gate, because `[a-z0-9]{32}`
+matches a checksum as readily as a key; upstream allowlists, because omitting
+them flags AWS's own published example key; and a base64 sweep, because agent
+payloads are full of encoded blobs and a secret inside one is invisible to every
+rule.
 
 ## The engine changed, and that is the whole performance story
 
 This was designed around `rregex` — the Rust regex crate in WebAssembly —
-because gitleaks patterns target Go's RE2 and run there verbatim. That turned
-out to be the wrong choice, for a reason that only shows up at scale.
+because gitleaks patterns target Go's RE2 and run there verbatim. That was the
+wrong choice, for a reason that only appears at scale.
 
-A wasm32 module has 4GB of address space, never releases it, and compiling all
-219 gitleaks patterns costs **1874MB before a byte is scanned** — roughly 8.5MB
-per pattern, spread evenly rather than concentrated in a few. On 710MB of real
-transcripts that hit the ceiling two thirds through, after which every
+A wasm32 module has 4GB of address space and never releases it, and compiling
+all 219 gitleaks patterns costs **1874MB before a byte is scanned** — about
+8.5MB per pattern, spread evenly rather than concentrated in a few. On 710MB of
+real transcripts that hit the ceiling two thirds through, after which every
 remaining entry failed.
 
-Things tried, measured on the same corpus:
+Measured on the same corpus:
 
-| | Peak | Time |
-|---|---|---|
+| | Peak memory | Time |
+| --- | --- | --- |
 | rregex, patterns rebuilt every 1MB | 2774MB | 68s |
 | rregex, rebuilt every 8MB | 1752MB | 38s |
-| rregex, never rebuilt, lazy compile | 1581MB | 30s |
-| all rules on JavaScript | 1372MB | 32s |
+| rregex, never rebuilt, compiled lazily | 1581MB | 30s |
+| rules moved to JavaScript | 1372MB | 32s |
 | **JavaScript only, rregex removed** | **346MB** | **17s** |
 
-Rebuilding patterns to discard their caches is *worse*, monotonically: freeing
-returns no address space, so each rebuild only raises the high-water mark. That
-was tried first and had to be undone.
+Two things worth taking from that table. Rebuilding patterns to discard their
+caches is *worse*, monotonically — freeing returns no address space, so each
+rebuild only raises the high-water mark. And the fix that worked was removing a
+dependency, not adding one.
 
-Translating to JavaScript also let the two patterns that had been altered to
-satisfy Rust — a `{50,1000}` clamped to fit its DFA size limit, and an escaped
-`{{` — ship exactly as gitleaks wrote them.
+## Translating the patterns
 
-Correctness is held by differential testing against the Rust engine, which
-stays as a dev dependency: 106,001 comparisons for directly-translatable rules
-and 12,775 for folded ones, zero disagreements, plus fixture tests on every
-commit. A pattern neither route can translate is dropped by the generator with
-its reason recorded, never approximated.
+gitleaks patterns are Go regexes. Most carry `(?i)` at the very front, which is
+exactly JavaScript's `i` flag. Thirty-one scope case-insensitivity to part of
+the pattern — a prefix stays case-sensitive while the body does not — which
+JavaScript cannot express as a flag. Those get each case-insensitive region
+rewritten to be explicitly case-tolerant instead: a character class gains the
+opposite-case letters, a literal becomes a two-case class. Same strings matched,
+written longer.
 
-Two things independent of the engine still matter:
+A pattern neither route can translate is dropped by the generator with its
+reason recorded. It is never approximated — a rule that matched *slightly*
+differently would be worse than one that is absent and said so.
 
-- **Input is chunked to 16KB with 1KB of overlap**, so no single match runs over
-  a 144KB line. The overlap exceeds the longest secret plus the widest rule
-  prefix, so a secret near a boundary is found twice and deduplicated.
-- **A rule only ever sees a 512-byte window** around its own keyword hit.
+Correctness here rests on differential testing against the Rust engine, which
+remains a dev dependency for exactly this purpose: 106,001 comparisons for the
+flag route and 12,775 for the rewritten one, drawn from real transcripts, with
+zero disagreements. Fixture tests check the same property on every commit.
 
-An entry the engine still refuses is counted and reported, never swallowed: a
+Removing the WASM engine also let two patterns ship as gitleaks wrote them. Both
+had been altered to satisfy Rust — one repetition bound clamped to fit a DFA
+size limit, one brace escaped — and JavaScript accepts both unmodified.
+
+## Reading transcripts
+
+Both agents write JSONL, one entry per line, each carrying a session id and a
+working directory. Each source owns its own shape and normalises to a common
+entry.
+
+Parsing is per-line and forgiving: an unrecognised line is skipped and counted,
+never thrown on. These formats change without notice, and a scanner that dies on
+an unknown line is a scanner nobody runs twice. The same applies to a file that
+vanishes mid-scan, which is just an agent writing while this runs.
+
+An entry the engine refuses is counted and reported rather than swallowed. A
 silent zero would read as "nothing to find" when it means "not looked at".
 
-## Stack
+## Wiping
 
-- **Node >=24**, ESM. Node 24 strips TypeScript natively
-  (`process.features.typescript === 'strip'`), which is what lets the test setup
-  below have no transform step at all.
-- **TypeScript 7.0.2** for typechecking only: `tsc --noEmit`.
-- **`node --test`, not jest.** `ts-jest`'s peer range is `>=4.3 <7`, so jest and
-  TypeScript 7 cannot coexist today. Node's runner plus native type stripping
-  removes jest, ts-jest and their transform config in one move — fewer
-  dependencies for a tool whose pitch is that it has almost none.
-- **tsup** to bundle `dist/cli.js`, **biome** to format and lint, **zod** to
-  parse, **rregex** to match. That is the whole dependency list.
+Separate from scanning, never reachable from the default command, and it asks
+before touching anything. The user types the whole word; a piped or scripted run
+cannot answer at all, so `yes | whatileaked wipe` rewrites nothing.
 
-`npx whatileaked` must work on a clean machine with no install step and no
-native build. Every choice above is downstream of that sentence.
+Replacement is textual substitution in the raw line rather than
+parse-and-reserialise. Reserialising would reorder keys and restyle the entire
+file, turning a one-secret edit into a whole-file rewrite no diff could be read.
+Credentials contain no character JSON escapes, so the secret appears in the raw
+line exactly as the scanner found it.
 
-## Comment discipline
+A secret inside a base64 blob has no literal substring to replace, so the whole
+encoded run is redacted. Missing this once meant `wipe` left behind exactly the
+findings `scan` kept reporting — the worst possible outcome for a tool whose job
+is removing them, and now covered by a test that scans after wiping and requires
+zero findings.
 
-Comment why, never what. A comment earns its place by recording a decision or a
-mistake already made once — the prefilter's cost, why RE2, why fixtures are not
-committed. No file headers, no restating the signature, no section banners.
+Files are rewritten through a temporary file and a rename, so an interrupted run
+leaves the original intact rather than half a transcript.
+
+## Distribution is a design constraint, not an afterthought
+
+The whole distribution strategy is one line: `npx whatileaked scan`. That
+sentence ruled out choices upstream of it.
+
+Native addons are out. The obvious engine for these patterns is the native `re2`
+package, whose binary arrives via a postinstall script — and recent npm blocks
+install scripts by default, which makes it fail to load outright. A tool
+distributed by `npx` cannot have an install step that a default setting breaks.
+
+Zero runtime dependencies is a claim on the README rather than an accident, and
+it is why the ANSI colour codes are written out by hand rather than pulled from
+a package.
+
+## Conventions
+
+Closed sets are declared once. Absence is stated in a type as `| null`, never
+elided with an optional. Every throw site has a named error class rather than a
+bare `Error`, so callers match on a type rather than on message text.
+
+Collaborators are built in one place and passed in by constructor. Nothing
+reaches for a singleton and nothing constructs its own dependencies, which is
+what makes the tests able to hand a scan a temporary directory and a string
+buffer instead of a home directory and a terminal.
+
+Comments record decisions and mistakes already made once — why an engine was
+chosen, why a threshold is what it is — never what the line below already says.

@@ -1,6 +1,6 @@
 import type { Finding, ScanStats } from '#report/finding'
 import type { Progress } from '#report/progress'
-import type { Reporter } from '#report/reporter'
+import type { TerminalReporter } from '#report/terminal-reporter'
 import type { Match } from '#scan/match'
 import type { Scanner } from '#scan/scanner'
 import type { Source } from '#sources/source'
@@ -9,13 +9,13 @@ import { TranscriptReader } from '#transcript/reader'
 export class ScanRun {
   readonly #sources: readonly Source[]
   readonly #scanner: Scanner
-  readonly #reporter: Reporter
+  readonly #reporter: TerminalReporter
   readonly #progress: Progress
 
   constructor(
     sources: readonly Source[],
     scanner: Scanner,
-    reporter: Reporter,
+    reporter: TerminalReporter,
     progress: Progress,
   ) {
     this.#sources = sources
@@ -27,8 +27,6 @@ export class ScanRun {
   /** Returns the finding count so the CLI can pick an exit code without
    *  re-deriving it from the reporter's output. */
   async run(): Promise<number> {
-    this.#progress.start()
-
     const findings: Finding[] = []
     const stats: ScanStats = { transcripts: 0, entries: 0, skipped: 0, unscannable: 0 }
 

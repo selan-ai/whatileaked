@@ -2,14 +2,13 @@ import { aggregate } from '#report/aggregate'
 import { DISCLOSURE } from '#report/disclosure'
 import type { Finding, ScanStats } from '#report/finding'
 import { plural, shorten } from '#report/paths'
-import type { Reporter } from '#report/reporter'
 import { bold, dim, green, red, yellow } from '#report/style'
 
 const PROJECT_COLUMN = 22
 const FINGERPRINT_CHARS = 8
 
 /** The write function is injected so a test reads lines instead of a stream. */
-export class TerminalReporter implements Reporter {
+export class TerminalReporter {
   readonly #write: (line: string) => void
 
   constructor(write: (line: string) => void) {

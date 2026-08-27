@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { SilentProgress } from '#report/progress'
+import { Progress } from '#report/progress'
 import { TerminalReporter } from '#report/terminal-reporter'
 import { fakeBase32 } from '#scan/fake-secret'
 import { KeywordIndex } from '#scan/keyword-index'
@@ -34,7 +34,7 @@ test('finds a planted key end to end and reports its project', async () => {
     [new ClaudeCodeSource(root)],
     scanner(),
     new TerminalReporter((line) => lines.push(line)),
-    new SilentProgress(),
+    new Progress(() => {}, false),
   )
 
   assert.equal(await run.run(), 1)
@@ -50,7 +50,7 @@ test('a clean home reports zero', async () => {
     [new ClaudeCodeSource(root)],
     scanner(),
     new TerminalReporter(() => {}),
-    new SilentProgress(),
+    new Progress(() => {}, false),
   )
   assert.equal(await run.run(), 0)
 })

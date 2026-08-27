@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { SilentProgress } from '#report/progress'
+import { Progress } from '#report/progress'
 import { TerminalReporter } from '#report/terminal-reporter'
 import { fakeBase32 } from '#scan/fake-secret'
 import { KeywordIndex } from '#scan/keyword-index'
@@ -175,7 +175,7 @@ test('a scan after a wipe finds nothing — the two must agree', async () => {
     [new ClaudeCodeSource(root)],
     scanner(),
     new TerminalReporter((line) => lines.push(line)),
-    new SilentProgress(),
+    new Progress(() => {}, false),
   )
   assert.equal(await scan.run(), 0, lines.join('\n'))
 })

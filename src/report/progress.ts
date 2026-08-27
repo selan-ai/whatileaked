@@ -3,13 +3,6 @@ const SPINNER = ['|', '/', '-', '\\'] as const
 /** Erase the whole line, so a shorter repaint cannot leave debris behind. */
 const CLEAR_LINE = `${String.fromCharCode(27)}[2K`
 
-export interface Progress {
-  start(): void
-  /** Called as each transcript is opened, so the line reflects real work. */
-  advance(transcripts: number, project: string): void
-  done(): void
-}
-
 /**
  * A single line that rewrites itself while the scan runs.
  *
@@ -20,7 +13,7 @@ export interface Progress {
  *
  * Writes to stderr so the report on stdout stays pipeable and screenshot-clean.
  */
-export class TerminalProgress implements Progress {
+export class Progress {
   readonly #write: (text: string) => void
   readonly #enabled: boolean
   #frame = 0
@@ -29,8 +22,6 @@ export class TerminalProgress implements Progress {
     this.#write = write
     this.#enabled = enabled
   }
-
-  start(): void {}
 
   advance(transcripts: number, project: string): void {
     if (!this.#enabled) return
@@ -53,11 +44,4 @@ export class TerminalProgress implements Progress {
 /** Long project names would wrap and leave debris behind the repaint. */
 function clip(project: string): string {
   return project.length > 40 ? `${project.slice(0, 39)}…` : project
-}
-
-/** Progress that draws nothing — for pipes, CI, and tests. */
-export class SilentProgress implements Progress {
-  start(): void {}
-  advance(): void {}
-  done(): void {}
 }

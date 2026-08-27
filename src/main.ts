@@ -3,7 +3,7 @@ import { Command, parseCommand } from '#commands'
 import { UnknownCommandError } from '#errors'
 import { home } from '#report/home'
 import { plural } from '#report/paths'
-import { SilentProgress, TerminalProgress } from '#report/progress'
+import { Progress } from '#report/progress'
 import { bold, dim, green, red, yellow } from '#report/style'
 import { TerminalReporter } from '#report/terminal-reporter'
 import { KeywordIndex } from '#scan/keyword-index'
@@ -54,11 +54,9 @@ async function scan(
   scanner: Scanner,
   write: (line: string) => void,
 ): Promise<number> {
-  // Progress goes to stderr so the report on stdout stays pipeable, and draws
-  // only on a terminal — a redirected run should not collect spinner frames.
-  const progress = colorful()
-    ? new TerminalProgress((text: string) => process.stderr.write(text), true)
-    : new SilentProgress()
+  // Progress goes to stderr so the report on stdout stays pipeable, and the
+  // class no-ops when that is not a terminal.
+  const progress = new Progress((text: string) => process.stderr.write(text), colorful())
 
   return await new ScanRun(sources, scanner, new TerminalReporter(write), progress).run()
 }
