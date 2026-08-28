@@ -1,6 +1,6 @@
 import { basename, join } from 'node:path'
 import { FileExtension, listFiles, walkDirectories } from '#sources/listing'
-import type { Source, TranscriptFile } from '#sources/source'
+import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
 import { objectField, stringField } from '#transcript/shape'
@@ -13,7 +13,7 @@ export class CodexSource implements Source {
     this.#home = home
   }
 
-  async *discover(): AsyncIterable<TranscriptFile> {
+  async *discover(): AsyncIterable<ScanFile> {
     const root = join(this.#home, '.codex', 'sessions')
 
     for (const dir of await walkDirectories(root)) {
@@ -22,6 +22,7 @@ export class CodexSource implements Source {
         const cwd = await firstCwd(path)
         yield {
           source: this.name,
+          kind: FileKind.transcript,
           path,
           project: cwd === null ? basename(dir) : basename(cwd),
         }

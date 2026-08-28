@@ -52,9 +52,10 @@ export class ScanRun {
               fingerprint: match.fingerprint,
               context: match.context,
               source: file.source,
+              kind: file.kind,
               project: file.project,
               file: file.path,
-              entryIndex: entry.index,
+              at: entry.index,
             })
           }
         }

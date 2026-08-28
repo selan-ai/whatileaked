@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { DISCLOSURE } from '#report/disclosure'
 import type { Finding } from '#report/finding'
 import { TerminalReporter } from '#report/terminal-reporter'
+import { FileKind } from '#sources/source'
 
 function render(findings: readonly Finding[]): string {
   const lines: string[] = []
@@ -20,9 +21,10 @@ const finding: Finding = {
   fingerprint: '0a3f8c21ffff',
   context: 'const SECOND_AWS_KEY = ',
   source: 'claude-code',
+  kind: FileKind.transcript,
   project: 'billing-api',
   file: '/tmp/abc-123.jsonl',
-  entryIndex: 412,
+  at: 412,
 }
 
 test('does not repeat the banner title', () => {

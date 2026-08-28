@@ -1,6 +1,6 @@
 import { basename, join } from 'node:path'
 import { FileExtension, listDirectories, listFiles } from '#sources/listing'
-import type { Source, TranscriptFile } from '#sources/source'
+import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
 import { stringField } from '#transcript/shape'
@@ -13,7 +13,7 @@ export class ClaudeCodeSource implements Source {
     this.#home = home
   }
 
-  async *discover(): AsyncIterable<TranscriptFile> {
+  async *discover(): AsyncIterable<ScanFile> {
     const root = join(this.#home, '.claude', 'projects')
 
     for (const slug of await listDirectories(root)) {
@@ -23,6 +23,7 @@ export class ClaudeCodeSource implements Source {
         const cwd = await firstCwd(path)
         yield {
           source: this.name,
+          kind: FileKind.transcript,
           path,
           project: cwd === null ? slug : basename(cwd),
         }

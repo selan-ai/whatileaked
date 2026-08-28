@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { ClaudeCodeSource } from '#sources/claude-code-source'
-import type { TranscriptFile } from '#sources/source'
+import { FileKind, type ScanFile } from '#sources/source'
 
 const home = async (): Promise<string> => await mkdtemp(join(tmpdir(), 'whatileaked-home-'))
 
-async function discover(root: string): Promise<TranscriptFile[]> {
-  const found: TranscriptFile[] = []
+async function discover(root: string): Promise<ScanFile[]> {
+  const found: ScanFile[] = []
   for await (const file of new ClaudeCodeSource(root).discover()) found.push(file)
   return found
 }
@@ -54,4 +54,17 @@ test('ignores files that are not jsonl', async () => {
 
 test('yields nothing when the directory does not exist', async () => {
   assert.deepEqual(await discover(await home()), [])
+})
+
+test('tags a discovered transcript as a transcript', async () => {
+  const root = await home()
+  const dir = join(root, '.claude', 'projects', '-Users-t-Repositories-demo')
+  await mkdir(dir, { recursive: true })
+  await writeFile(
+    join(dir, 'abc-123.jsonl'),
+    JSON.stringify({ sessionId: 'abc-123', cwd: '/Users/t/Repositories/demo', type: 'user' }),
+  )
+
+  const found = await discover(root)
+  assert.equal(found[0]?.kind, FileKind.transcript)
 })
