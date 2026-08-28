@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { aggregate } from '#report/aggregate'
 import type { Finding } from '#report/finding'
 import { FileKind } from '#sources/source'
+import { SourceName } from '#transcript/entry'
 
 const finding = (rule: string, fp: string, project: string): Finding => ({
   rule,
@@ -58,4 +59,25 @@ test('orders by total descending so the worst rule reads first', () => {
 
 test('empty in, empty out', () => {
   assert.deepEqual(aggregate([]), [])
+})
+
+test('a secret in both a transcript and a memory file gets a row each', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    project: 'demo',
+  }
+
+  const totals = aggregate([
+    { ...shared, kind: FileKind.transcript, file: '/home/.claude/projects/demo/s.jsonl', at: 4 },
+    { ...shared, kind: FileKind.memory, file: '/home/.claude/CLAUDE.md', at: 14 },
+  ])
+
+  assert.equal(totals.length, 1)
+  assert.equal(totals[0]?.sites.length, 2)
+
+  const files = totals[0]?.sites.map((site) => site.file).sort()
+  assert.deepEqual(files, ['/home/.claude/CLAUDE.md', '/home/.claude/projects/demo/s.jsonl'])
 })
