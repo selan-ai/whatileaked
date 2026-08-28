@@ -33,16 +33,24 @@ export class ClaudeCodeSource implements Source {
       const dir = join(root, slug)
       let project = slug
 
-      for (const file of await listFiles(dir, FileExtension.jsonl)) {
-        const path = join(dir, file)
-        const cwd = await firstCwd(path)
-        if (cwd !== null) project = basename(cwd)
+      // Walked rather than listed: a session's subagents get their own
+      // transcripts under `<session>/subagents/`, and a subagent is handed the
+      // parent's context — so a credential pasted into the session is in those
+      // files too. Listing only the top level missed them, which meant the
+      // count printed after a scan was smaller than the number of transcripts
+      // on disk while claiming to be all of them.
+      for (const nested of await walkDirectories(dir)) {
+        for (const file of await listFiles(nested, FileExtension.jsonl)) {
+          const path = join(nested, file)
+          const cwd = await firstCwd(path)
+          if (cwd !== null) project = basename(cwd)
 
-        yield {
-          source: this.name,
-          kind: FileKind.transcript,
-          path,
-          project: cwd === null ? slug : basename(cwd),
+          yield {
+            source: this.name,
+            kind: FileKind.transcript,
+            path,
+            project: cwd === null ? slug : basename(cwd),
+          }
         }
       }
 

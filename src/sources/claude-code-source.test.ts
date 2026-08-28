@@ -69,6 +69,30 @@ test('tags a discovered transcript as a transcript', async () => {
   assert.equal(found[0]?.kind, FileKind.transcript)
 })
 
+test('finds subagent transcripts nested under a session', async () => {
+  const root = await home()
+  const session = join(root, '.claude', 'projects', '-Users-t-Repositories-demo')
+  await mkdir(join(session, 'abc-123', 'subagents'), { recursive: true })
+
+  const meta = { sessionId: 'abc-123', cwd: '/Users/t/Repositories/demo', type: 'user' }
+  await writeFile(join(session, 'abc-123.jsonl'), JSON.stringify(meta))
+  // A subagent gets the parent's context handed to it, so a credential pasted
+  // into the session reaches this file too.
+  await writeFile(
+    join(session, 'abc-123', 'subagents', 'agent-a8aa52af.jsonl'),
+    JSON.stringify({ ...meta, isSidechain: true }),
+  )
+
+  const found = await discover(root)
+  assert.equal(found.length, 2)
+
+  const paths = found.map((file) => file.path).sort()
+  assert.match(paths[0] ?? '', /abc-123\.jsonl$/)
+  assert.match(paths[1] ?? '', /subagents\/agent-a8aa52af\.jsonl$/)
+  // The subagent file carries its own cwd, so it resolves the same project.
+  assert.deepEqual([...new Set(found.map((file) => file.project))], ['demo'])
+})
+
 test('finds the global instruction file', async () => {
   const root = await home()
   await mkdir(join(root, '.claude'), { recursive: true })

@@ -194,6 +194,11 @@ npx whatileaked scan || echo "found something"
 | --- | --- |
 | Claude Code | `~/.claude/projects/` · `~/.claude/CLAUDE.md` |
 | Codex | `~/.codex/sessions/` · `~/.codex/AGENTS.md` |
+| Cursor | `~/.cursor/projects/*/agent-transcripts/` |
+
+Cursor keeps its older Ask-mode chats in SQLite rather than jsonl, and those are
+not scanned. Reading them needs `node:sqlite`, which arrived in Node 22.5, and
+this runs on Node 20. Agent transcripts are covered; Ask history is not.
 
 Transcripts record credentials that were already sent. Instruction and memory
 files are worse: they are read again at the start of the next session, so a

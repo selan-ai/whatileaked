@@ -3,6 +3,7 @@
 export const SourceName = {
   'claude-code': 'claude-code',
   codex: 'codex',
+  cursor: 'cursor',
 } as const
 
 export type SourceName = (typeof SourceName)[keyof typeof SourceName]
