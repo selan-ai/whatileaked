@@ -1,5 +1,5 @@
 import { basename, join } from 'node:path'
-import { listJsonl, walkDirectories } from '#sources/listing'
+import { FileExtension, listFiles, walkDirectories } from '#sources/listing'
 import type { Source, TranscriptFile } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
@@ -17,7 +17,7 @@ export class CodexSource implements Source {
     const root = join(this.#home, '.codex', 'sessions')
 
     for (const dir of await walkDirectories(root)) {
-      for (const file of await listJsonl(dir)) {
+      for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
         const cwd = await firstCwd(path)
         yield {
