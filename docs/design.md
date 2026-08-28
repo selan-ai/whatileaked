@@ -23,6 +23,25 @@ So the output says **transmitted**, never **stored**. The narrower claim
 survives a hostile reader; the broad one does not, and this tool exists to be
 posted somewhere hostile readers live.
 
+## A leak that happened, and a leak that recurs
+
+A transcript is a record. Whatever is in it was sent once, and no edit to the
+file un-sends it. An instruction file is not a record — it is input, read again
+every time the agent starts, so a credential in one is not a past event but a
+standing arrangement to keep leaking.
+
+Both are scanned through the same pipeline and printed in the same list. The
+path distinguishes them, which is enough: nobody needs to be told that
+`CLAUDE.md` is not a transcript.
+
+The summary underneath is where they part. The headline counts only what was
+provably transmitted. Global instruction files load into every session and would
+qualify, but per-project memory files surface on relevance instead, so a secret
+in one may never have been sent — and a tool that exists to survive a hostile
+reader cannot round that up to "sent to a model provider". So the credentials
+still sitting on disk get their own sentence, which says the thing that is true
+of all of them: they will be read again unless someone removes them.
+
 ## Nothing may carry a secret
 
 No type in the codebase has a field that can hold a credential value. Not the
