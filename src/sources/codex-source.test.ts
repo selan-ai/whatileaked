@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { CodexSource } from '#sources/codex-source'
-import type { TranscriptFile } from '#sources/source'
+import type { ScanFile } from '#sources/source'
 
 const home = async (): Promise<string> => await mkdtemp(join(tmpdir(), 'whatileaked-home-'))
 
-async function discover(root: string): Promise<TranscriptFile[]> {
-  const found: TranscriptFile[] = []
+async function discover(root: string): Promise<ScanFile[]> {
+  const found: ScanFile[] = []
   for await (const file of new CodexSource(root).discover()) found.push(file)
   return found
 }

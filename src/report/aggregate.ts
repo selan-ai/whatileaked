@@ -1,9 +1,11 @@
 import type { Finding } from '#report/finding'
+import type { FileKind } from '#sources/source'
 
 /** One secret in one project. The unit a reader can act on: rotate this
  *  credential, and look in this session to see how it got there. */
 export interface LeakSite {
   fingerprint: string
+  kind: FileKind
   project: string
   /** The transcript to open. Printing it is the difference between "you have a
    *  leak" and "you can go look at it". */
@@ -11,9 +13,9 @@ export interface LeakSite {
   /** Masked lead-in from the first place this secret was seen. */
   context: string
   occurrences: number
-  /** The earliest entry it appears in, so there is one concrete place to look
-   *  rather than a list of hundreds. */
-  firstEntryIndex: number
+  /** The earliest position it appears at, so there is one concrete place to
+   *  look rather than a list of hundreds. */
+  firstAt: number
 }
 
 export interface RuleTotal {
@@ -44,17 +46,18 @@ export function aggregate(findings: readonly Finding[]): readonly RuleTotal[] {
     const site = sites.get(key)
     if (site) {
       site.occurrences++
-      site.firstEntryIndex = Math.min(site.firstEntryIndex, finding.entryIndex)
+      site.firstAt = Math.min(site.firstAt, finding.at)
       continue
     }
 
     sites.set(key, {
       fingerprint: finding.fingerprint,
+      kind: finding.kind,
       project: finding.project,
       file: finding.file,
       context: finding.context,
       occurrences: 1,
-      firstEntryIndex: finding.entryIndex,
+      firstAt: finding.at,
     })
   }
 
