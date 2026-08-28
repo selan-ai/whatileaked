@@ -29,7 +29,6 @@ test('finds a session and takes the project from cwd', async () => {
 
   const found = await discover(root)
   assert.equal(found.length, 1)
-  assert.equal(found[0]?.sessionId, 'abc-123')
   assert.equal(found[0]?.project, 'deploy-tool')
   assert.equal(found[0]?.source, 'claude-code')
 })
@@ -41,7 +40,6 @@ test('falls back to the filename when no entry carries a cwd', async () => {
   await writeFile(join(dir, 'def-456.jsonl'), '{"type":"summary"}')
 
   const found = await discover(root)
-  assert.equal(found[0]?.sessionId, 'def-456')
   assert.equal(found[0]?.project, 'weird-slug')
 })
 

@@ -28,7 +28,6 @@ test('reads session id and project from the session_meta line', async () => {
 
   const found = await discover(root)
   assert.equal(found.length, 1)
-  assert.equal(found[0]?.sessionId, '019cddc0')
   assert.equal(found[0]?.project, 'data-pipeline')
   assert.equal(found[0]?.source, 'codex')
 })
@@ -41,7 +40,6 @@ test('finds sessions nested at any depth under the year directories', async () =
 
   const found = await discover(root)
   assert.equal(found.length, 1)
-  assert.equal(found[0]?.sessionId, 'rollout-deep')
 })
 
 test('yields nothing when the directory does not exist', async () => {

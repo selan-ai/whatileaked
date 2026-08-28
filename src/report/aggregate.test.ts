@@ -9,7 +9,6 @@ const finding = (rule: string, fp: string, project: string): Finding => ({
   context: 'const KEY = ',
   source: 'claude-code',
   project,
-  sessionId: 's1',
   file: '/tmp/s1.jsonl',
   entryIndex: 0,
 })

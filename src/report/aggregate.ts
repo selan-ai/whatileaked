@@ -5,7 +5,6 @@ import type { Finding } from '#report/finding'
 export interface LeakSite {
   fingerprint: string
   project: string
-  sessionId: string
   /** The transcript to open. Printing it is the difference between "you have a
    *  leak" and "you can go look at it". */
   file: string
@@ -52,7 +51,6 @@ export function aggregate(findings: readonly Finding[]): readonly RuleTotal[] {
     sites.set(key, {
       fingerprint: finding.fingerprint,
       project: finding.project,
-      sessionId: finding.sessionId,
       file: finding.file,
       context: finding.context,
       occurrences: 1,
