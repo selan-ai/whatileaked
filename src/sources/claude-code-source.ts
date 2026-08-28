@@ -31,10 +31,13 @@ export class ClaudeCodeSource implements Source {
 
     for (const slug of await listDirectories(root)) {
       const dir = join(root, slug)
+      let project = slug
 
       for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
         const cwd = await firstCwd(path)
+        if (cwd !== null) project = basename(cwd)
+
         yield {
           source: this.name,
           kind: FileKind.transcript,
@@ -43,16 +46,18 @@ export class ClaudeCodeSource implements Source {
         }
       }
 
-      // The slug rather than a cwd basename: a memory file carries no session
-      // metadata to read a working directory out of, and reading a sibling
-      // transcript's just to prettify a column is not worth the coupling.
+      // A memory file carries no session metadata to read a working directory
+      // out of, so it borrows the name its sibling transcripts resolved. The
+      // raw slug is the path-mangled cwd — `-Users-t-Repositories-alpha` where
+      // the transcripts beside it say `alpha` — and printing both spellings of
+      // one project in a single report reads as two projects.
       for (const nested of await walkDirectories(join(dir, 'memory'))) {
         for (const file of await listFiles(nested, FileExtension.markdown)) {
           yield {
             source: this.name,
             kind: FileKind.memory,
             path: join(nested, file),
-            project: slug,
+            project,
           }
         }
       }

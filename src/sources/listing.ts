@@ -20,10 +20,7 @@ export const FileExtension = { jsonl: '.jsonl', markdown: '.md' } as const
 
 export type FileExtension = (typeof FileExtension)[keyof typeof FileExtension]
 
-export async function listFiles(
-  dir: string,
-  extension: FileExtension,
-): Promise<readonly string[]> {
+export async function listFiles(dir: string, extension: FileExtension): Promise<readonly string[]> {
   try {
     const entries = await readdir(dir, { withFileTypes: true })
     return entries

@@ -92,3 +92,22 @@ test('finds project memory files at any depth and ignores non-markdown', async (
   assert.equal(found[0]?.kind, FileKind.memory)
   assert.equal(found[0]?.project, 'slug')
 })
+
+test('a memory file borrows the project name its sibling transcripts resolved', async () => {
+  const root = await home()
+  const dir = join(root, '.claude', 'projects', '-Users-t-Repositories-alpha')
+  await mkdir(join(dir, 'memory'), { recursive: true })
+  await writeFile(
+    join(dir, 's1.jsonl'),
+    JSON.stringify({ sessionId: 's1', cwd: '/Users/t/Repositories/alpha', type: 'user' }),
+  )
+  await writeFile(join(dir, 'memory', 'a-fact.md'), 'a fact')
+
+  const found = await discover(root)
+  const memory = found.filter((file) => file.kind === FileKind.memory)
+
+  assert.equal(memory.length, 1)
+  // Not the raw slug: the transcript beside it reports `alpha`, and one project
+  // must not appear under two spellings in one report.
+  assert.equal(memory[0]?.project, 'alpha')
+})

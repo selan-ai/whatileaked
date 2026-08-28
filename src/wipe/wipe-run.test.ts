@@ -190,7 +190,7 @@ test('a second wipe finds nothing left', async () => {
   assert.deepEqual(second.planned, [])
 })
 
-async function memoryHome(key: string, body: readonly string[]): Promise<string> {
+async function memoryHome(body: readonly string[]): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'whatileaked-wipe-'))
   await mkdir(join(root, '.claude'), { recursive: true })
   await writeFile(join(root, '.claude', 'CLAUDE.md'), body.join('\n'))
@@ -199,7 +199,7 @@ async function memoryHome(key: string, body: readonly string[]): Promise<string>
 
 test('rewrites a memory file and leaves its other lines alone', async () => {
   const key = `AKIA${fakeBase32(31, 16)}`
-  const root = await memoryHome(key, ['# Notes', '', `key: ${key}`, 'keep this line'])
+  const root = await memoryHome(['# Notes', '', `key: ${key}`, 'keep this line'])
 
   const outcome = await run(root, new ScriptedPrompt(CONFIRMATION)).run()
   assert.equal(outcome.confirmed, true)
@@ -214,7 +214,7 @@ test('rewrites a memory file and leaves its other lines alone', async () => {
 
 test('the preview counts memory findings in lines, not messages', async () => {
   const key = `AKIA${fakeBase32(32, 16)}`
-  const root = await memoryHome(key, [`key: ${key}`])
+  const root = await memoryHome([`key: ${key}`])
 
   const written: string[] = []
   await new WipeRun([new ClaudeCodeSource(root)], scanner(), new ScriptedPrompt('no'), (line) =>
