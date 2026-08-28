@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { CodexSource } from '#sources/codex-source'
-import type { ScanFile } from '#sources/source'
+import { FileKind, type ScanFile } from '#sources/source'
 
 const home = async (): Promise<string> => await mkdtemp(join(tmpdir(), 'whatileaked-home-'))
 
@@ -44,4 +44,15 @@ test('finds sessions nested at any depth under the year directories', async () =
 
 test('yields nothing when the directory does not exist', async () => {
   assert.deepEqual(await discover(await home()), [])
+})
+
+test('finds the global instruction file', async () => {
+  const root = await home()
+  await mkdir(join(root, '.codex'), { recursive: true })
+  await writeFile(join(root, '.codex', 'AGENTS.md'), '# instructions')
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.memory)
+  assert.equal(found[0]?.project, 'codex')
 })

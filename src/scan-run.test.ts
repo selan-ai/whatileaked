@@ -44,6 +44,31 @@ test('finds a planted key end to end and reports its project', async () => {
   assert.ok(!output.includes(key))
 })
 
+test('finds a planted key in a memory file', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'whatileaked-e2e-'))
+  await mkdir(join(root, '.claude'), { recursive: true })
+
+  const key = `AKIA${fakeBase32(21, 16)}`
+  await writeFile(
+    join(root, '.claude', 'CLAUDE.md'),
+    ['# Deploy notes', '', `Use AWS_ACCESS_KEY_ID=${key} for staging.`].join('\n'),
+  )
+
+  const lines: string[] = []
+  const run = new ScanRun(
+    [new ClaudeCodeSource(root)],
+    scanner(),
+    new TerminalReporter((line) => lines.push(line)),
+    new Progress(() => {}, false),
+  )
+
+  assert.equal(await run.run(), 1)
+  const output = lines.join('\n')
+  assert.match(output, /aws-access-token/)
+  assert.match(output, /CLAUDE\.md/)
+  assert.ok(!output.includes(key))
+})
+
 test('a clean home reports zero', async () => {
   const root = await mkdtemp(join(tmpdir(), 'whatileaked-e2e-'))
   const run = new ScanRun(

@@ -9,6 +9,7 @@ function render(findings: readonly Finding[]): string {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report(findings, {
     transcripts: 12,
+    memoryFiles: 0,
     entries: 400,
     skipped: 1,
     unscannable: 0,
@@ -75,6 +76,7 @@ test('entries the engine refused are surfaced, not swallowed', () => {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report([finding], {
     transcripts: 12,
+    memoryFiles: 0,
     entries: 400,
     skipped: 1,
     unscannable: 7,
