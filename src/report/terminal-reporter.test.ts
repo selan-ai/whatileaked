@@ -83,3 +83,38 @@ test('entries the engine refused are surfaced, not swallowed', () => {
   })
   assert.match(lines.join('\n'), /7 messages could not be scanned/)
 })
+
+test('counts memory files in the scanned line', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 3,
+    memoryFiles: 2,
+    entries: 40,
+    skipped: 0,
+    unscannable: 0,
+  })
+
+  assert.match(lines.join('\n'), /3 transcripts · 40 messages · 2 memory files/)
+})
+
+test('says nothing about files on disk when every finding is a transcript', () => {
+  const output = render([finding])
+  assert.match(output, /1 credential sent to a model provider/)
+  assert.ok(!output.includes('still on disk'))
+})
+
+test('flags credentials that are still in files the agent reads', () => {
+  const output = render([
+    {
+      ...finding,
+      kind: FileKind.memory,
+      project: 'claude-code',
+      file: '/home/.claude/CLAUDE.md',
+      at: 14,
+    },
+  ])
+
+  assert.match(output, /CLAUDE\.md/)
+  assert.match(output, /1 credential still on disk, in files your agent reads/)
+  assert.match(output, /0 credentials sent to a model provider/)
+})
