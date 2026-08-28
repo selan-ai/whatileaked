@@ -1,7 +1,7 @@
 {
   "name": "whatileaked",
-  "version": "0.2.0",
-  "description": "Scan your local Claude Code and Codex transcripts for credentials you already sent to a model provider.",
+  "version": "0.3.0",
+  "description": "Scan your local Claude Code, Codex and Cursor transcripts for credentials you already sent to a model provider.",
   "type": "module",
   "imports": {
     "#scripts/*": "./scripts/*.ts",
