@@ -42,7 +42,7 @@ export class TerminalReporter {
       this.#write(`${red('*')} ${bold(total.rule)}  ${dim(plural(total.distinct, 'secret'))}`)
 
       for (const site of total.sites) {
-        const times = site.occurrences === 1 ? 'sent once' : `sent ${count(site.occurrences)} times`
+        const times = occurrences(site)
         this.#write(
           `    ${yellow(site.fingerprint.slice(0, FINGERPRINT_CHARS))}  ` +
             `${site.project.padEnd(PROJECT_COLUMN)} ${dim(times)}`,
@@ -86,6 +86,23 @@ export class TerminalReporter {
 
 function count(value: number): string {
   return value.toLocaleString('en-US')
+}
+
+/**
+ * How often the secret turned up, phrased for the kind of file it sits in.
+ *
+ * A transcript occurrence is a message that went to a provider, so "sent" is
+ * exactly right. A memory-file occurrence is a line still on disk, and calling
+ * that "sent" would assert the transmission the summary below deliberately
+ * declines to claim — printed, as it would be, two lines above a headline
+ * counting zero credentials sent.
+ */
+function occurrences(site: LeakSite): string {
+  if (site.kind === FileKind.memory) {
+    return site.occurrences === 1 ? 'on one line' : `on ${count(site.occurrences)} lines`
+  }
+
+  return site.occurrences === 1 ? 'sent once' : `sent ${count(site.occurrences)} times`
 }
 
 /** Summed per rule rather than across all of them, matching what this reported

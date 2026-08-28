@@ -81,3 +81,44 @@ test('a secret in both a transcript and a memory file gets a row each', () => {
   const files = totals[0]?.sites.map((site) => site.file).sort()
   assert.deepEqual(files, ['/home/.claude/CLAUDE.md', '/home/.claude/projects/demo/s.jsonl'])
 })
+
+test('two memory files in one project get a row each', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    kind: FileKind.memory,
+    project: 'demo',
+  }
+
+  // Each needs its own edit, so collapsing them would print one path and hide
+  // the other — and a reader who fixed the named file would scan again and find
+  // the same fingerprint still there.
+  const totals = aggregate([
+    { ...shared, file: '/home/.claude/projects/demo/memory/a.md', at: 3 },
+    { ...shared, file: '/home/.claude/projects/demo/memory/b.md', at: 9 },
+  ])
+
+  assert.equal(totals[0]?.sites.length, 2)
+})
+
+test('two transcripts of one project still collapse to a single row', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    kind: FileKind.transcript,
+    project: 'demo',
+  }
+
+  // Nothing to edit in either: they record the same past send.
+  const totals = aggregate([
+    { ...shared, file: '/home/.claude/projects/demo/s1.jsonl', at: 3 },
+    { ...shared, file: '/home/.claude/projects/demo/s2.jsonl', at: 9 },
+  ])
+
+  assert.equal(totals[0]?.sites.length, 1)
+  assert.equal(totals[0]?.sites[0]?.occurrences, 2)
+})

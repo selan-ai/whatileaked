@@ -1,4 +1,4 @@
-import { readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { readLines } from '#memory/reader'
 import { plural, shorten } from '#report/paths'
 import { bold, dim, red, yellow } from '#report/style'
@@ -128,8 +128,12 @@ export class WipeRun {
       return redactLine(line, secrets)
     })
 
+    // The mode travels with the content. An instruction file is likelier than a
+    // transcript to have been deliberately locked down, and a rewrite that
+    // quietly widened 0600 to 0644 would be a second leak.
+    const { mode } = await stat(file)
     const temporary = `${file}.whatileaked-tmp`
-    await writeFile(temporary, rewritten.join('\n'), 'utf8')
+    await writeFile(temporary, rewritten.join('\n'), { encoding: 'utf8', mode })
     await rename(temporary, file)
 
     return redacted
