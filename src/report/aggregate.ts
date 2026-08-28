@@ -42,7 +42,10 @@ export function aggregate(findings: readonly Finding[]): readonly RuleTotal[] {
     const sites = byRule.get(finding.rule) ?? new Map<string, LeakSite>()
     byRule.set(finding.rule, sites)
 
-    const key = `${finding.fingerprint}:${finding.project}`
+    // The kind is part of the key because the same credential in a transcript and
+    // in a memory file is two problems, not one: the transcript has already been
+    // sent and needs a rotation, the file is still on disk and needs an edit.
+    const key = `${finding.fingerprint}:${finding.project}:${finding.kind}`
     const site = sites.get(key)
     if (site) {
       site.occurrences++
