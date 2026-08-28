@@ -1,5 +1,5 @@
 import type { Finding } from '#report/finding'
-import type { FileKind } from '#sources/source'
+import { FileKind } from '#sources/source'
 
 /** One secret in one project. The unit a reader can act on: rotate this
  *  credential, and look in this session to see how it got there. */
@@ -45,7 +45,15 @@ export function aggregate(findings: readonly Finding[]): readonly RuleTotal[] {
     // The kind is part of the key because the same credential in a transcript and
     // in a memory file is two problems, not one: the transcript has already been
     // sent and needs a rotation, the file is still on disk and needs an edit.
-    const key = `${finding.fingerprint}:${finding.project}:${finding.kind}`
+    //
+    // Memory findings key on the file rather than the project, one level further
+    // down, for the same reason: two memory files each need their own edit, and
+    // collapsing them would print one path and hide the other, so a reader who
+    // fixed the file named here would scan again and see the secret returned.
+    // Transcripts still collapse, because several sessions of one project
+    // describe the same past send and there is nothing to edit in any of them.
+    const where = finding.kind === FileKind.memory ? finding.file : finding.project
+    const key = `${finding.fingerprint}:${where}:${finding.kind}`
     const site = sites.get(key)
     if (site) {
       site.occurrences++

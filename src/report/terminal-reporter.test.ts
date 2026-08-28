@@ -118,3 +118,26 @@ test('flags credentials that are still in files the agent reads', () => {
   assert.match(output, /1 credential still on disk, in files your agent reads/)
   assert.match(output, /0 credentials sent to a model provider/)
 })
+
+test('a memory row never claims the credential was sent', () => {
+  const memory: Finding = {
+    ...finding,
+    kind: FileKind.memory,
+    file: '/home/.claude/projects/alpha/memory/notes.md',
+  }
+
+  // Two occurrences in one file, which for a transcript would render as
+  // "sent 2 times" — directly above a headline saying none were sent.
+  const output = render([memory, { ...memory, at: 20 }])
+
+  assert.match(output, /on 2 lines/)
+  assert.ok(!output.includes('sent 2 times'))
+  assert.ok(!output.includes('sent once'))
+})
+
+test('a single memory occurrence reads as one line, not one send', () => {
+  const output = render([{ ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md' }])
+
+  assert.match(output, /on one line/)
+  assert.ok(!output.includes('sent once'))
+})

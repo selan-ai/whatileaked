@@ -1,9 +1,9 @@
 import { basename, join } from 'node:path'
 import {
   FileExtension,
-  isFile,
   listDirectories,
   listFiles,
+  resolveFile,
   walkDirectories,
 } from '#sources/listing'
 import { FileKind, type ScanFile, type Source } from '#sources/source'
@@ -20,8 +20,8 @@ export class ClaudeCodeSource implements Source {
   }
 
   async *discover(): AsyncIterable<ScanFile> {
-    const instructions = join(this.#home, '.claude', 'CLAUDE.md')
-    if (await isFile(instructions)) {
+    const instructions = await resolveFile(join(this.#home, '.claude', 'CLAUDE.md'))
+    if (instructions !== null) {
       // No project owns this file — it loads into every session regardless of
       // where the agent is running, so the source name is the honest label.
       yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }

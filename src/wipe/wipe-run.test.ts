@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdir, mkdtemp, readFile, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -210,6 +210,43 @@ test('rewrites a memory file and leaves its other lines alone', async () => {
   assert.match(after, /REDACTED BY whatileaked/)
   assert.match(after, /^# Notes$/m)
   assert.match(after, /^keep this line$/m)
+})
+
+test('a symlinked instruction file is redacted at its target, link intact', async () => {
+  const key = `AKIA${fakeBase32(33, 16)}`
+  const root = await mkdtemp(join(tmpdir(), 'whatileaked-wipe-'))
+  await mkdir(join(root, '.claude'), { recursive: true })
+  await mkdir(join(root, 'dotfiles'), { recursive: true })
+
+  // The shape a dotfiles manager leaves behind.
+  const real = join(root, 'dotfiles', 'CLAUDE.md')
+  const link = join(root, '.claude', 'CLAUDE.md')
+  await writeFile(real, `key: ${key}`)
+  await symlink(real, link)
+
+  const outcome = await run(root, new ScriptedPrompt(CONFIRMATION)).run()
+  assert.equal(outcome.filesRewritten, 1)
+
+  // The credential has to be gone from the file that actually holds it.
+  // Renaming over the link instead would report exactly the same success while
+  // leaving this untouched.
+  const after = await readFile(real, 'utf8')
+  assert.ok(!after.includes(key))
+  assert.match(after, /REDACTED BY whatileaked/)
+
+  assert.equal((await lstat(link)).isSymbolicLink(), true)
+})
+
+test('a rewrite keeps the file mode it found', async () => {
+  const key = `AKIA${fakeBase32(34, 16)}`
+  const root = await memoryHome([`key: ${key}`])
+  const file = join(root, '.claude', 'CLAUDE.md')
+  await chmod(file, 0o600)
+
+  await run(root, new ScriptedPrompt(CONFIRMATION)).run()
+
+  // A rewrite that quietly widened 0600 to 0644 would be a second leak.
+  assert.equal((await stat(file)).mode & 0o777, 0o600)
 })
 
 test('the preview counts memory findings in lines, not messages', async () => {
