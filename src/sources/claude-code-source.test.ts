@@ -68,3 +68,27 @@ test('tags a discovered transcript as a transcript', async () => {
   const found = await discover(root)
   assert.equal(found[0]?.kind, FileKind.transcript)
 })
+
+test('finds the global instruction file', async () => {
+  const root = await home()
+  await mkdir(join(root, '.claude'), { recursive: true })
+  await writeFile(join(root, '.claude', 'CLAUDE.md'), '# instructions')
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.memory)
+  assert.equal(found[0]?.project, 'claude-code')
+})
+
+test('finds project memory files at any depth and ignores non-markdown', async () => {
+  const root = await home()
+  const memory = join(root, '.claude', 'projects', 'slug', 'memory', 'nested')
+  await mkdir(memory, { recursive: true })
+  await writeFile(join(memory, 'a-fact.md'), 'a fact')
+  await writeFile(join(root, '.claude', 'projects', 'slug', 'memory', 'notes.txt'), 'ignored')
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.memory)
+  assert.equal(found[0]?.project, 'slug')
+})

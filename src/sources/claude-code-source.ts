@@ -1,5 +1,11 @@
 import { basename, join } from 'node:path'
-import { FileExtension, listDirectories, listFiles } from '#sources/listing'
+import {
+  FileExtension,
+  isFile,
+  listDirectories,
+  listFiles,
+  walkDirectories,
+} from '#sources/listing'
 import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
@@ -14,10 +20,18 @@ export class ClaudeCodeSource implements Source {
   }
 
   async *discover(): AsyncIterable<ScanFile> {
+    const instructions = join(this.#home, '.claude', 'CLAUDE.md')
+    if (await isFile(instructions)) {
+      // No project owns this file — it loads into every session regardless of
+      // where the agent is running, so the source name is the honest label.
+      yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
+    }
+
     const root = join(this.#home, '.claude', 'projects')
 
     for (const slug of await listDirectories(root)) {
       const dir = join(root, slug)
+
       for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
         const cwd = await firstCwd(path)
@@ -26,6 +40,20 @@ export class ClaudeCodeSource implements Source {
           kind: FileKind.transcript,
           path,
           project: cwd === null ? slug : basename(cwd),
+        }
+      }
+
+      // The slug rather than a cwd basename: a memory file carries no session
+      // metadata to read a working directory out of, and reading a sibling
+      // transcript's just to prettify a column is not worth the coupling.
+      for (const nested of await walkDirectories(join(dir, 'memory'))) {
+        for (const file of await listFiles(nested, FileExtension.markdown)) {
+          yield {
+            source: this.name,
+            kind: FileKind.memory,
+            path: join(nested, file),
+            project: slug,
+          }
         }
       }
     }

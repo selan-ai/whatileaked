@@ -18,6 +18,9 @@ export interface Finding {
 
 export interface ScanStats {
   transcripts: number
+  /** Counted apart from transcripts: one is a record of what was sent, the
+   *  other is a file that will be read again. */
+  memoryFiles: number
   entries: number
   /** Lines that were not valid JSON. */
   skipped: number
