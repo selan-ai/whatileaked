@@ -21,7 +21,6 @@ const finding: Finding = {
   context: 'const SECOND_AWS_KEY = ',
   source: 'claude-code',
   project: 'billing-api',
-  sessionId: 'abc-123',
   file: '/tmp/abc-123.jsonl',
   entryIndex: 412,
 }

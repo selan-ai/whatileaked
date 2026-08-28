@@ -20,26 +20,27 @@ export class ClaudeCodeSource implements Source {
       const dir = join(root, slug)
       for (const file of await listJsonl(dir)) {
         const path = join(dir, file)
-        const meta = await firstMeta(path)
+        const cwd = await firstCwd(path)
         yield {
           source: this.name,
           path,
-          sessionId: meta === null ? basename(file, '.jsonl') : meta.sessionId,
-          project: meta === null ? slug : basename(meta.cwd),
+          project: cwd === null ? slug : basename(cwd),
         }
       }
     }
   }
 }
 
-/** The first entry carrying both fields. Early lines are often summaries or
- *  file-history snapshots and carry neither. */
-async function firstMeta(path: string): Promise<{ sessionId: string; cwd: string } | null> {
+/** The cwd of the first entry carrying both a sessionId and a cwd. Early lines
+ *  are often summaries or file-history snapshots and carry neither; the
+ *  sessionId stays in the predicate because it marks the first real entry, even
+ *  though nothing reads the value. */
+async function firstCwd(path: string): Promise<string | null> {
   const reader = new TranscriptReader()
   for await (const entry of reader.read(path)) {
     const sessionId = stringField(entry.payload, 'sessionId')
     const cwd = stringField(entry.payload, 'cwd')
-    if (sessionId !== null && cwd !== null) return { sessionId, cwd }
+    if (sessionId !== null && cwd !== null) return cwd
   }
   return null
 }

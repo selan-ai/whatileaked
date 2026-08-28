@@ -53,7 +53,6 @@ export class ScanRun {
               context: match.context,
               source: file.source,
               project: file.project,
-              sessionId: file.sessionId,
               file: file.path,
               entryIndex: entry.index,
             })

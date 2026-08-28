@@ -9,7 +9,6 @@ export interface Finding {
   context: string
   source: SourceName
   project: string
-  sessionId: string
   file: string
   entryIndex: number
 }
