@@ -13,6 +13,7 @@ import { SECRET_RULE_SOURCES } from '#scan/secret-rules'
 import { ScanRun } from '#scan-run'
 import { ClaudeCodeSource } from '#sources/claude-code-source'
 import { CodexSource } from '#sources/codex-source'
+import { CursorSource } from '#sources/cursor-source'
 import type { Source } from '#sources/source'
 import { TerminalPrompt } from '#wipe/confirm'
 import { WipeRun } from '#wipe/wipe-run'
@@ -36,7 +37,11 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 0
   }
 
-  const sources: readonly Source[] = [new ClaudeCodeSource(homedir()), new CodexSource(homedir())]
+  const sources: readonly Source[] = [
+    new ClaudeCodeSource(homedir()),
+    new CodexSource(homedir()),
+    new CursorSource(homedir()),
+  ]
   const scanner = new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))
 
   return command === Command.wipe
