@@ -1,5 +1,5 @@
 import { basename, join } from 'node:path'
-import { listDirectories, listJsonl } from '#sources/listing'
+import { FileExtension, listDirectories, listFiles } from '#sources/listing'
 import type { Source, TranscriptFile } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
@@ -18,7 +18,7 @@ export class ClaudeCodeSource implements Source {
 
     for (const slug of await listDirectories(root)) {
       const dir = join(root, slug)
-      for (const file of await listJsonl(dir)) {
+      for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
         const cwd = await firstCwd(path)
         yield {
