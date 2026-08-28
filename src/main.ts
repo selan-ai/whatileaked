@@ -4,7 +4,7 @@ import { UnknownCommandError } from '#errors'
 import { home } from '#report/home'
 import { plural } from '#report/paths'
 import { Progress } from '#report/progress'
-import { bold, dim, green, red, yellow } from '#report/style'
+import { bold, cyan, dim, green, red, yellow } from '#report/style'
 import { TerminalReporter } from '#report/terminal-reporter'
 import { KeywordIndex } from '#scan/keyword-index'
 import { compileRules } from '#scan/rule'
@@ -54,6 +54,13 @@ async function scan(
   scanner: Scanner,
   write: (line: string) => void,
 ): Promise<number> {
+  // `scan` is reachable directly, so this is the only place a reader who never
+  // saw the home screen learns who wrote the thing they are running. `wipe`
+  // already opens the same way.
+  write(`  ${dim('Welcome to whatileaked — built by Selan')} ${cyan('(selan.ai)')}`)
+  write(dim('  checking what you have already sent to a model provider'))
+  write('')
+
   // Progress goes to stderr so the report on stdout stays pipeable, and the
   // class no-ops when that is not a terminal.
   const progress = new Progress((text: string) => process.stderr.write(text), colorful())
