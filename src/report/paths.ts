@@ -9,27 +9,19 @@ export function shorten(file: string): string {
 
   // An instruction file's path has been through `realpath`, so if `$HOME` is
   // itself a symlink the two spellings never match textually and the username
-  // this function exists to hide would be printed in full.
+  // this function exists to hide would be printed in full. Reached only when
+  // the plain comparison already failed, which on an ordinary machine is never.
   const real = realHome(home)
   return file.startsWith(real) ? `~${file.slice(real.length)}` : file
 }
 
-/** Memoised: `shorten` is called for every row, and this is a syscall. */
-const resolved = new Map<string, string>()
-
 function realHome(home: string): string {
-  const cached = resolved.get(home)
-  if (cached !== undefined) return cached
-
-  let real = home
   try {
-    real = realpathSync(home)
+    return realpathSync(home)
   } catch {
     // An unresolvable $HOME is not this function's problem to report.
+    return home
   }
-
-  resolved.set(home, real)
-  return real
 }
 
 export function plural(count: number, noun: string): string {

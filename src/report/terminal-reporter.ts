@@ -48,7 +48,7 @@ export class TerminalReporter {
             `${site.project.padEnd(PROJECT_COLUMN)} ${dim(times)}`,
         )
         if (site.context !== '') this.#write(`              ${dim(`${site.context}***`)}`)
-        this.#write(`              ${dim(shorten(site.file))}`)
+        this.#write(`              ${dim(where(site))}`)
       }
 
       this.#write('')
@@ -105,14 +105,25 @@ function occurrences(site: LeakSite): string {
   return site.occurrences === 1 ? 'sent once' : `sent ${count(site.occurrences)} times`
 }
 
+/**
+ * Where to go and fix it.
+ *
+ * A memory file gets `path:line`, because that is a place a person can open and
+ * edit — which is the whole repair for a file still on disk. A transcript gets
+ * the path alone: its position is a message index into one long jsonl line, and
+ * printing a number nobody can navigate to would be noise.
+ */
+function where(site: LeakSite): string {
+  const path = shorten(site.file)
+  return site.kind === FileKind.memory ? `${path}:${site.firstAt}` : path
+}
+
 /** Summed per rule rather than across all of them, matching what this reported
  *  before memory files existed: one fingerprint matched by two rules is two
  *  findings to act on. */
 function distinct(totals: readonly RuleTotal[], kind: FileKind): number {
-  return totals.reduce((sum, total) => sum + kindDistinct(total.sites, kind), 0)
-}
-
-function kindDistinct(sites: readonly LeakSite[], kind: FileKind): number {
-  const matching = sites.filter((site) => site.kind === kind)
-  return new Set(matching.map((site) => site.fingerprint)).size
+  return totals.reduce((sum, total) => {
+    const matching = total.sites.filter((site) => site.kind === kind)
+    return sum + new Set(matching.map((site) => site.fingerprint)).size
+  }, 0)
 }

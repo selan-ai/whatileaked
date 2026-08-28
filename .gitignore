@@ -2,3 +2,10 @@ node_modules
 dist
 *.tgz
 .idea
+
+# Agent scratch. Plans, specs and ledgers are how a change got made, not what
+# the code is — they go stale the moment a file moves, and this repo's design
+# doc leaves that kind of thing out on purpose.
+.superpowers
+.claude
+docs/superpowers

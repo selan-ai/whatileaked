@@ -135,6 +135,20 @@ test('a memory row never claims the credential was sent', () => {
   assert.ok(!output.includes('sent once'))
 })
 
+test('a memory finding prints the line to open, a transcript does not', () => {
+  const memory = render([
+    { ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md', at: 14 },
+  ])
+
+  // The repair for a file still on disk is editing it, so the row has to say
+  // where in it to look.
+  assert.match(memory, /CLAUDE\.md:14/)
+
+  // A transcript's position is a message index into one long jsonl line —
+  // a number nobody can navigate to.
+  assert.ok(!render([finding]).includes('.jsonl:'))
+})
+
 test('a single memory occurrence reads as one line, not one send', () => {
   const output = render([{ ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md' }])
 
