@@ -23,17 +23,17 @@ export class Progress {
     this.#enabled = enabled
   }
 
-  advance(transcripts: number, project: string): void {
+  advance(files: number, project: string): void {
     if (!this.#enabled) return
 
     // Not every file: at ~600 transcripts this would repaint faster than a
     // terminal can usefully show, and the syscalls are not free.
-    if (transcripts % 8 !== 0) return
+    if (files % 8 !== 0) return
 
     const spinner = SPINNER[this.#frame % SPINNER.length] ?? '|'
     this.#frame++
 
-    this.#write(`\r${CLEAR_LINE}  ${spinner} reading ${transcripts} transcripts — ${clip(project)}`)
+    this.#write(`\r${CLEAR_LINE}  ${spinner} reading ${files} files — ${clip(project)}`)
   }
 
   done(): void {

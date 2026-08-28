@@ -192,8 +192,13 @@ npx whatileaked scan || echo "found something"
 
 | Agent | Folder |
 | --- | --- |
-| Claude Code | `~/.claude/projects/` |
-| Codex | `~/.codex/sessions/` |
+| Claude Code | `~/.claude/projects/` · `~/.claude/CLAUDE.md` |
+| Codex | `~/.codex/sessions/` · `~/.codex/AGENTS.md` |
+
+Transcripts record credentials that were already sent. Instruction and memory
+files are worse: they are read again at the start of the next session, so a
+credential in one keeps leaking until the file is edited. Both are scanned, and
+`wipe` rewrites both.
 
 Nowhere else. It does not read your repos, your shell history, or your
 environment. Adding support for another agent is one small file — pull requests

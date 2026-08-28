@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { CodexSource } from '#sources/codex-source'
-import type { TranscriptFile } from '#sources/source'
+import { FileKind, type ScanFile } from '#sources/source'
 
 const home = async (): Promise<string> => await mkdtemp(join(tmpdir(), 'whatileaked-home-'))
 
-async function discover(root: string): Promise<TranscriptFile[]> {
-  const found: TranscriptFile[] = []
+async function discover(root: string): Promise<ScanFile[]> {
+  const found: ScanFile[] = []
   for await (const file of new CodexSource(root).discover()) found.push(file)
   return found
 }
@@ -28,7 +28,6 @@ test('reads session id and project from the session_meta line', async () => {
 
   const found = await discover(root)
   assert.equal(found.length, 1)
-  assert.equal(found[0]?.sessionId, '019cddc0')
   assert.equal(found[0]?.project, 'data-pipeline')
   assert.equal(found[0]?.source, 'codex')
 })
@@ -41,9 +40,19 @@ test('finds sessions nested at any depth under the year directories', async () =
 
   const found = await discover(root)
   assert.equal(found.length, 1)
-  assert.equal(found[0]?.sessionId, 'rollout-deep')
 })
 
 test('yields nothing when the directory does not exist', async () => {
   assert.deepEqual(await discover(await home()), [])
+})
+
+test('finds the global instruction file', async () => {
+  const root = await home()
+  await mkdir(join(root, '.codex'), { recursive: true })
+  await writeFile(join(root, '.codex', 'AGENTS.md'), '# instructions')
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.memory)
+  assert.equal(found[0]?.project, 'codex')
 })

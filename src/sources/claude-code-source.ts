@@ -1,6 +1,12 @@
 import { basename, join } from 'node:path'
-import { listDirectories, listJsonl } from '#sources/listing'
-import type { Source, TranscriptFile } from '#sources/source'
+import {
+  FileExtension,
+  listDirectories,
+  listFiles,
+  resolveFile,
+  walkDirectories,
+} from '#sources/listing'
+import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
 import { stringField } from '#transcript/shape'
@@ -13,33 +19,62 @@ export class ClaudeCodeSource implements Source {
     this.#home = home
   }
 
-  async *discover(): AsyncIterable<TranscriptFile> {
+  async *discover(): AsyncIterable<ScanFile> {
+    const instructions = await resolveFile(join(this.#home, '.claude', 'CLAUDE.md'))
+    if (instructions !== null) {
+      // No project owns this file — it loads into every session regardless of
+      // where the agent is running, so the source name is the honest label.
+      yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
+    }
+
     const root = join(this.#home, '.claude', 'projects')
 
     for (const slug of await listDirectories(root)) {
       const dir = join(root, slug)
-      for (const file of await listJsonl(dir)) {
+      let project = slug
+
+      for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
-        const meta = await firstMeta(path)
+        const cwd = await firstCwd(path)
+        if (cwd !== null) project = basename(cwd)
+
         yield {
           source: this.name,
+          kind: FileKind.transcript,
           path,
-          sessionId: meta === null ? basename(file, '.jsonl') : meta.sessionId,
-          project: meta === null ? slug : basename(meta.cwd),
+          project: cwd === null ? slug : basename(cwd),
+        }
+      }
+
+      // A memory file carries no session metadata to read a working directory
+      // out of, so it borrows the name its sibling transcripts resolved. The
+      // raw slug is the path-mangled cwd — `-Users-t-Repositories-alpha` where
+      // the transcripts beside it say `alpha` — and printing both spellings of
+      // one project in a single report reads as two projects.
+      for (const nested of await walkDirectories(join(dir, 'memory'))) {
+        for (const file of await listFiles(nested, FileExtension.markdown)) {
+          yield {
+            source: this.name,
+            kind: FileKind.memory,
+            path: join(nested, file),
+            project,
+          }
         }
       }
     }
   }
 }
 
-/** The first entry carrying both fields. Early lines are often summaries or
- *  file-history snapshots and carry neither. */
-async function firstMeta(path: string): Promise<{ sessionId: string; cwd: string } | null> {
+/** The cwd of the first entry carrying both a sessionId and a cwd. Early lines
+ *  are often summaries or file-history snapshots and carry neither; the
+ *  sessionId stays in the predicate because it marks the first real entry, even
+ *  though nothing reads the value. */
+async function firstCwd(path: string): Promise<string | null> {
   const reader = new TranscriptReader()
   for await (const entry of reader.read(path)) {
     const sessionId = stringField(entry.payload, 'sessionId')
     const cwd = stringField(entry.payload, 'cwd')
-    if (sessionId !== null && cwd !== null) return { sessionId, cwd }
+    if (sessionId !== null && cwd !== null) return cwd
   }
   return null
 }

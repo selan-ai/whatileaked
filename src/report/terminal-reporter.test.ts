@@ -3,11 +3,13 @@ import { test } from 'node:test'
 import { DISCLOSURE } from '#report/disclosure'
 import type { Finding } from '#report/finding'
 import { TerminalReporter } from '#report/terminal-reporter'
+import { FileKind } from '#sources/source'
 
 function render(findings: readonly Finding[]): string {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report(findings, {
     transcripts: 12,
+    memoryFiles: 0,
     entries: 400,
     skipped: 1,
     unscannable: 0,
@@ -20,10 +22,10 @@ const finding: Finding = {
   fingerprint: '0a3f8c21ffff',
   context: 'const SECOND_AWS_KEY = ',
   source: 'claude-code',
+  kind: FileKind.transcript,
   project: 'billing-api',
-  sessionId: 'abc-123',
   file: '/tmp/abc-123.jsonl',
-  entryIndex: 412,
+  at: 412,
 }
 
 test('does not repeat the banner title', () => {
@@ -74,9 +76,82 @@ test('entries the engine refused are surfaced, not swallowed', () => {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report([finding], {
     transcripts: 12,
+    memoryFiles: 0,
     entries: 400,
     skipped: 1,
     unscannable: 7,
   })
   assert.match(lines.join('\n'), /7 messages could not be scanned/)
+})
+
+test('counts memory files in the scanned line', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 3,
+    memoryFiles: 2,
+    entries: 40,
+    skipped: 0,
+    unscannable: 0,
+  })
+
+  assert.match(lines.join('\n'), /3 transcripts · 40 messages · 2 memory files/)
+})
+
+test('says nothing about files on disk when every finding is a transcript', () => {
+  const output = render([finding])
+  assert.match(output, /1 credential sent to a model provider/)
+  assert.ok(!output.includes('still on disk'))
+})
+
+test('flags credentials that are still in files the agent reads', () => {
+  const output = render([
+    {
+      ...finding,
+      kind: FileKind.memory,
+      project: 'claude-code',
+      file: '/home/.claude/CLAUDE.md',
+      at: 14,
+    },
+  ])
+
+  assert.match(output, /CLAUDE\.md/)
+  assert.match(output, /1 credential still on disk, in files your agent reads/)
+  assert.match(output, /0 credentials sent to a model provider/)
+})
+
+test('a memory row never claims the credential was sent', () => {
+  const memory: Finding = {
+    ...finding,
+    kind: FileKind.memory,
+    file: '/home/.claude/projects/alpha/memory/notes.md',
+  }
+
+  // Two occurrences in one file, which for a transcript would render as
+  // "sent 2 times" — directly above a headline saying none were sent.
+  const output = render([memory, { ...memory, at: 20 }])
+
+  assert.match(output, /on 2 lines/)
+  assert.ok(!output.includes('sent 2 times'))
+  assert.ok(!output.includes('sent once'))
+})
+
+test('a memory finding prints the line to open, a transcript does not', () => {
+  const memory = render([
+    { ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md', at: 14 },
+  ])
+
+  // The repair for a file still on disk is editing it, so the row has to say
+  // where in it to look.
+  assert.match(memory, /CLAUDE\.md:14/)
+
+  // A transcript's position is a message index into one long jsonl line —
+  // a number nobody can navigate to.
+  assert.ok(!render([finding]).includes('.jsonl:'))
+})
+
+test('a single memory occurrence reads as one line, not one send', () => {
+  const output = render([{ ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md' }])
+
+  assert.match(output, /on one line/)
+  assert.ok(!output.includes('sent once'))
 })

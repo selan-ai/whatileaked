@@ -1,3 +1,4 @@
+import type { FileKind } from '#sources/source'
 import type { SourceName } from '#transcript/entry'
 
 /** A match plus where it was found. No field can carry the secret. */
@@ -8,14 +9,18 @@ export interface Finding {
    *  credential from a test fixture without opening the file. */
   context: string
   source: SourceName
+  kind: FileKind
   project: string
-  sessionId: string
   file: string
-  entryIndex: number
+  /** Message index in a transcript, line number in a memory file. */
+  at: number
 }
 
 export interface ScanStats {
   transcripts: number
+  /** Counted apart from transcripts: one is a record of what was sent, the
+   *  other is a file that will be read again. */
+  memoryFiles: number
   entries: number
   /** Lines that were not valid JSON. */
   skipped: number

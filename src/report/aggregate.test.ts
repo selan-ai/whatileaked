@@ -2,16 +2,18 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { aggregate } from '#report/aggregate'
 import type { Finding } from '#report/finding'
+import { FileKind } from '#sources/source'
+import { SourceName } from '#transcript/entry'
 
 const finding = (rule: string, fp: string, project: string): Finding => ({
   rule,
   fingerprint: fp,
   context: 'const KEY = ',
   source: 'claude-code',
+  kind: FileKind.transcript,
   project,
-  sessionId: 's1',
   file: '/tmp/s1.jsonl',
-  entryIndex: 0,
+  at: 0,
 })
 
 test('counts total occurrences and distinct secrets separately', () => {
@@ -37,10 +39,10 @@ test('collapses repeats of one secret in one project into a single site', () => 
 })
 
 test('a site remembers the earliest entry it appeared in', () => {
-  const late = { ...finding('aws', 'aaa', 'p1'), entryIndex: 900 }
-  const early = { ...finding('aws', 'aaa', 'p1'), entryIndex: 12 }
+  const late = { ...finding('aws', 'aaa', 'p1'), at: 900 }
+  const early = { ...finding('aws', 'aaa', 'p1'), at: 12 }
   const totals = aggregate([late, early])
-  assert.equal(totals[0]?.sites[0]?.firstEntryIndex, 12)
+  assert.equal(totals[0]?.sites[0]?.firstAt, 12)
 })
 
 test('orders by total descending so the worst rule reads first', () => {
@@ -57,4 +59,66 @@ test('orders by total descending so the worst rule reads first', () => {
 
 test('empty in, empty out', () => {
   assert.deepEqual(aggregate([]), [])
+})
+
+test('a secret in both a transcript and a memory file gets a row each', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    project: 'demo',
+  }
+
+  const totals = aggregate([
+    { ...shared, kind: FileKind.transcript, file: '/home/.claude/projects/demo/s.jsonl', at: 4 },
+    { ...shared, kind: FileKind.memory, file: '/home/.claude/CLAUDE.md', at: 14 },
+  ])
+
+  assert.equal(totals.length, 1)
+  assert.equal(totals[0]?.sites.length, 2)
+
+  const files = totals[0]?.sites.map((site) => site.file).sort()
+  assert.deepEqual(files, ['/home/.claude/CLAUDE.md', '/home/.claude/projects/demo/s.jsonl'])
+})
+
+test('two memory files in one project get a row each', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    kind: FileKind.memory,
+    project: 'demo',
+  }
+
+  // Each needs its own edit, so collapsing them would print one path and hide
+  // the other — and a reader who fixed the named file would scan again and find
+  // the same fingerprint still there.
+  const totals = aggregate([
+    { ...shared, file: '/home/.claude/projects/demo/memory/a.md', at: 3 },
+    { ...shared, file: '/home/.claude/projects/demo/memory/b.md', at: 9 },
+  ])
+
+  assert.equal(totals[0]?.sites.length, 2)
+})
+
+test('two transcripts of one project still collapse to a single row', () => {
+  const shared = {
+    rule: 'github-pat',
+    fingerprint: 'abc123',
+    context: 'token = ',
+    source: SourceName['claude-code'],
+    kind: FileKind.transcript,
+    project: 'demo',
+  }
+
+  // Nothing to edit in either: they record the same past send.
+  const totals = aggregate([
+    { ...shared, file: '/home/.claude/projects/demo/s1.jsonl', at: 3 },
+    { ...shared, file: '/home/.claude/projects/demo/s2.jsonl', at: 9 },
+  ])
+
+  assert.equal(totals[0]?.sites.length, 1)
+  assert.equal(totals[0]?.sites[0]?.occurrences, 2)
 })

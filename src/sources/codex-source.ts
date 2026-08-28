@@ -1,6 +1,6 @@
 import { basename, join } from 'node:path'
-import { listJsonl, walkDirectories } from '#sources/listing'
-import type { Source, TranscriptFile } from '#sources/source'
+import { FileExtension, listFiles, resolveFile, walkDirectories } from '#sources/listing'
+import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 import { TranscriptReader } from '#transcript/reader'
 import { objectField, stringField } from '#transcript/shape'
@@ -13,25 +13,32 @@ export class CodexSource implements Source {
     this.#home = home
   }
 
-  async *discover(): AsyncIterable<TranscriptFile> {
+  async *discover(): AsyncIterable<ScanFile> {
+    const instructions = await resolveFile(join(this.#home, '.codex', 'AGENTS.md'))
+    if (instructions !== null) {
+      yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
+    }
+
     const root = join(this.#home, '.codex', 'sessions')
 
     for (const dir of await walkDirectories(root)) {
-      for (const file of await listJsonl(dir)) {
+      for (const file of await listFiles(dir, FileExtension.jsonl)) {
         const path = join(dir, file)
-        const meta = await firstMeta(path)
+        const cwd = await firstCwd(path)
         yield {
           source: this.name,
+          kind: FileKind.transcript,
           path,
-          sessionId: meta === null ? basename(file, '.jsonl') : meta.id,
-          project: meta === null ? basename(dir) : basename(meta.cwd),
+          project: cwd === null ? basename(dir) : basename(cwd),
         }
       }
     }
   }
 }
 
-async function firstMeta(path: string): Promise<{ id: string; cwd: string } | null> {
+/** As in the Claude Code source, the id stays in the predicate but its value is
+ *  discarded — it identifies the metadata entry, nothing reads it. */
+async function firstCwd(path: string): Promise<string | null> {
   const reader = new TranscriptReader()
   for await (const entry of reader.read(path)) {
     if (stringField(entry.payload, 'type') !== 'session_meta') continue
@@ -39,7 +46,7 @@ async function firstMeta(path: string): Promise<{ id: string; cwd: string } | nu
     const payload = objectField(entry.payload, 'payload')
     const id = stringField(payload, 'id')
     const cwd = stringField(payload, 'cwd')
-    if (id !== null && cwd !== null) return { id, cwd }
+    if (id !== null && cwd !== null) return cwd
   }
   return null
 }

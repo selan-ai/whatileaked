@@ -1,8 +1,9 @@
-import { readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { readLines } from '#memory/reader'
 import { plural, shorten } from '#report/paths'
 import { bold, dim, red, yellow } from '#report/style'
 import type { Scanner } from '#scan/scanner'
-import type { Source } from '#sources/source'
+import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { TranscriptReader } from '#transcript/reader'
 import { CONFIRMATION, type Prompt } from '#wipe/confirm'
 import { redactLine } from '#wipe/redact'
@@ -10,6 +11,7 @@ import { redactLine } from '#wipe/redact'
 export interface WipePlan {
   file: string
   project: string
+  kind: FileKind
   /** Line indices to rewrite, and how many secrets each holds. */
   lines: number
   secrets: number
@@ -78,22 +80,35 @@ export class WipeRun {
 
     for (const source of this.#sources) {
       for await (const file of source.discover()) {
-        const reader = new TranscriptReader()
         let lines = 0
         let secrets = 0
 
-        for await (const entry of reader.read(file.path)) {
-          const found = this.#scanner.secretsOf(entry.line)
+        for await (const text of this.#textOf(file)) {
+          const found = this.#scanner.secretsOf(text)
           if (found.size === 0) continue
           lines++
           secrets += found.size
         }
 
-        if (lines > 0) plans.push({ file: file.path, project: file.project, lines, secrets })
+        if (lines > 0) {
+          plans.push({ file: file.path, project: file.project, kind: file.kind, lines, secrets })
+        }
       }
     }
 
     return plans
+  }
+
+  /** The rewrite below is textual and kind-blind; only counting needs to know
+   *  which reader gets the file. */
+  async *#textOf(file: ScanFile): AsyncIterable<string> {
+    if (file.kind === FileKind.memory) {
+      for await (const line of readLines(file.path)) yield line.text
+      return
+    }
+
+    const reader = new TranscriptReader()
+    for await (const entry of reader.read(file.path)) yield entry.line
   }
 
   /** Rewrites through a temporary file and a rename, so an interrupted run
@@ -113,8 +128,12 @@ export class WipeRun {
       return redactLine(line, secrets)
     })
 
+    // The mode travels with the content. An instruction file is likelier than a
+    // transcript to have been deliberately locked down, and a rewrite that
+    // quietly widened 0600 to 0644 would be a second leak.
+    const { mode } = await stat(file)
     const temporary = `${file}.whatileaked-tmp`
-    await writeFile(temporary, rewritten.join('\n'), 'utf8')
+    await writeFile(temporary, rewritten.join('\n'), { encoding: 'utf8', mode })
     await rename(temporary, file)
 
     return redacted
@@ -128,9 +147,12 @@ export class WipeRun {
     this.#write('')
 
     for (const plan of plans) {
+      // A transcript is counted in messages; a memory file has no messages, so
+      // the honest unit there is the line the reader will rewrite.
+      const unit = plan.kind === FileKind.memory ? 'line' : 'message'
       this.#write(
         `  ${yellow('*')} ${bold(plan.project.padEnd(project))}  ` +
-          `${dim(`${plural(plan.secrets, 'secret')} in ${plural(plan.lines, 'message')}`)}`,
+          `${dim(`${plural(plan.secrets, 'secret')} in ${plural(plan.lines, unit)}`)}`,
       )
       this.#write(`      ${dim(shorten(plan.file))}`)
     }
