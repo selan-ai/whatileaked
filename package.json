@@ -21,6 +21,7 @@
   "scripts": {
     "dev": "node src/cli.ts",
     "build": "tsc --noEmit && tsup",
+    "prepublishOnly": "npm run lint && npm test && npm run build",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"src/**/*.test.ts\"",
     "format": "biome check --write",
