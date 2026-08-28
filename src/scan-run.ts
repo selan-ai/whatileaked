@@ -69,13 +69,7 @@ export class ScanRun {
   }
 
   /** One entry the engine chokes on must not cost the other 700,000. */
-  #collect(
-    file: ScanFile,
-    text: string,
-    at: number,
-    findings: Finding[],
-    stats: ScanStats,
-  ): void {
+  #collect(file: ScanFile, text: string, at: number, findings: Finding[], stats: ScanStats): void {
     let matches: readonly Match[] = []
     try {
       matches = this.#scanner.scan(text)
