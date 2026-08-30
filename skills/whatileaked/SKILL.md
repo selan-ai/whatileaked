@@ -9,15 +9,21 @@ Coding agents write every session to disk. Anything pasted into a chat, or read 
 
 ## Running a scan
 
-Use a binary already on PATH:
+Check whether the CLI is already available:
+
+    whatileaked --version
+
+If it is, run:
 
     whatileaked scan
 
-If there is none, run it from this repository:
+If it is not, and you are working inside this repository, run it from source instead:
 
     node dist/cli.js scan
 
-If dist is missing, build it first with `npm install && npm run build`. Do not install the package globally without asking the user first.
+If neither applies, ask the user before installing anything, then:
+
+    npm install -g whatileaked
 
 `scan` only reads. It changes nothing, and takes about 20 seconds for a year of history.
 
