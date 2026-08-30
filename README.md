@@ -1,5 +1,7 @@
 # whatileaked
 
+[![ci](https://github.com/selan-ai/whatileaked/actions/workflows/ci.yml/badge.svg)](https://github.com/selan-ai/whatileaked/actions/workflows/ci.yml)
+
 Your coding agent saves every conversation to your disk. If you ever pasted an
 API key into a chat, or asked the agent to read a `.env` file, that key is now
 sitting in a log file on your laptop — and it was uploaded to Anthropic or
