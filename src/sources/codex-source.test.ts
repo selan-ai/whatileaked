@@ -42,6 +42,24 @@ test('finds sessions nested at any depth under the year directories', async () =
   assert.equal(found.length, 1)
 })
 
+test('finds archived sessions, which Codex moves out of the sessions directory', async () => {
+  const root = await home()
+  const dir = join(root, '.codex', 'archived_sessions')
+  await mkdir(dir, { recursive: true })
+  await writeFile(
+    join(dir, 'rollout-2026-05-02T09-14-40-019de1a7.jsonl'),
+    JSON.stringify({
+      type: 'session_meta',
+      payload: { id: '019de1a7', cwd: '/Users/t/Repositories/billing-api' },
+    }),
+  )
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.transcript)
+  assert.equal(found[0]?.project, 'billing-api')
+})
+
 test('yields nothing when the directory does not exist', async () => {
   assert.deepEqual(await discover(await home()), [])
 })

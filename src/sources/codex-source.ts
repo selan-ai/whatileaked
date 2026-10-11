@@ -19,17 +19,21 @@ export class CodexSource implements Source {
       yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
     }
 
-    const root = join(this.#home, '.codex', 'sessions')
-
-    for (const dir of await walkDirectories(root)) {
-      for (const file of await listFiles(dir, FileExtension.jsonl)) {
-        const path = join(dir, file)
-        const cwd = await firstCwd(path)
-        yield {
-          source: this.name,
-          kind: FileKind.transcript,
-          path,
-          project: cwd === null ? basename(dir) : basename(cwd),
+    // Archiving a conversation in Codex moves its rollout out of `sessions/`
+    // into `archived_sessions/`. Archived is not deleted — everything in it was
+    // still sent — and reading only `sessions/` reported a clean machine for
+    // exactly the conversations someone had tidied away.
+    for (const root of ['sessions', 'archived_sessions']) {
+      for (const dir of await walkDirectories(join(this.#home, '.codex', root))) {
+        for (const file of await listFiles(dir, FileExtension.jsonl)) {
+          const path = join(dir, file)
+          const cwd = await firstCwd(path)
+          yield {
+            source: this.name,
+            kind: FileKind.transcript,
+            path,
+            project: cwd === null ? basename(dir) : basename(cwd),
+          }
         }
       }
     }

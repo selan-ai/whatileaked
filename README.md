@@ -195,7 +195,7 @@ npx whatileaked scan || echo "found something"
 | Agent | Folder |
 | --- | --- |
 | Claude Code | `~/.claude/projects/` · `~/.claude/CLAUDE.md` |
-| Codex | `~/.codex/sessions/` · `~/.codex/AGENTS.md` |
+| Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/AGENTS.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 
 Cursor keeps its older Ask-mode chats in SQLite rather than jsonl, and those are
