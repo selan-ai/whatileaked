@@ -16,7 +16,12 @@ export async function listDirectories(root: string): Promise<readonly string[]> 
 
 /** The extensions this tool reads. A literal at the call site would not fail on
  *  a typo — it would list nothing and report a clean machine. */
-export const FileExtension = { jsonl: '.jsonl', markdown: '.md', text: '.txt' } as const
+export const FileExtension = {
+  jsonl: '.jsonl',
+  markdown: '.md',
+  text: '.txt',
+  database: '.db',
+} as const
 
 export type FileExtension = (typeof FileExtension)[keyof typeof FileExtension]
 

@@ -5,8 +5,12 @@ import type { TerminalReporter } from '#report/terminal-reporter'
 import type { Match } from '#scan/match'
 import type { Scanner } from '#scan/scanner'
 import { isJsonl } from '#sources/listing'
-import { FileKind, type ScanFile, type Source } from '#sources/source'
+import { FileKind, type ScanFile, type Source, type StoredMessage } from '#sources/source'
 import { TranscriptReader } from '#transcript/reader'
+
+/** 22.13, not 22.5: before it `node:sqlite` loads only behind a flag, and
+ *  feature detection cannot pass one. */
+export const NEEDS_SQLITE = 'reading it needs Node 22.13 or newer'
 
 export class ScanRun {
   readonly #sources: readonly Source[]
@@ -36,10 +40,17 @@ export class ScanRun {
       entries: 0,
       skipped: 0,
       unscannable: 0,
+      unread: [],
     }
 
     for (const source of this.#sources) {
       for await (const file of source.discover()) {
+        if (file.messages !== undefined) {
+          await this.#readDatabase(file, file.messages, findings, stats)
+          this.#progress.advance(stats.transcripts + stats.memoryFiles, file.project)
+          continue
+        }
+
         if (file.kind === FileKind.transcript) stats.transcripts++
         else stats.memoryFiles++
 
@@ -70,6 +81,31 @@ export class ScanRun {
     this.#progress.done()
     this.#reporter.report(findings, stats)
     return findings.length
+  }
+
+  /** A database counts as one transcript once it has been read. One it could
+   *  not open is listed instead, so a scan that skipped it never reads as clean. */
+  async #readDatabase(
+    file: ScanFile,
+    messages: (() => AsyncIterable<StoredMessage>) | null,
+    findings: Finding[],
+    stats: ScanStats,
+  ): Promise<void> {
+    if (messages === null) {
+      stats.unread.push({ path: file.path, reason: NEEDS_SQLITE })
+      return
+    }
+
+    let index = 0
+    try {
+      for await (const message of messages()) {
+        stats.entries++
+        this.#collect({ ...file, project: message.project }, message.text, index++, findings, stats)
+      }
+      stats.transcripts++
+    } catch {
+      stats.unread.push({ path: file.path, reason: 'it could not be opened' })
+    }
   }
 
   /** One entry the engine chokes on must not cost the other 700,000. */

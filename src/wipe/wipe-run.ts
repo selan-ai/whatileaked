@@ -20,6 +20,9 @@ export interface WipePlan {
 
 export interface WipeOutcome {
   planned: readonly WipePlan[]
+  /** Databases that hold a secret, or could not be read to find out. `wipe`
+   *  rewrites lines of text and leaves these exactly as they are. */
+  untouched: readonly string[]
   filesRewritten: number
   secretsRedacted: number
   confirmed: boolean
@@ -52,9 +55,9 @@ export class WipeRun {
   }
 
   async run(): Promise<WipeOutcome> {
-    const plans = await this.#plan()
+    const { plans, untouched } = await this.#plan()
     if (plans.length === 0) {
-      return { planned: [], filesRewritten: 0, secretsRedacted: 0, confirmed: false }
+      return { planned: [], untouched, filesRewritten: 0, secretsRedacted: 0, confirmed: false }
     }
 
     this.#preview(plans)
@@ -63,7 +66,7 @@ export class WipeRun {
       `  Type ${bold(red(CONFIRMATION))} to rewrite these files, or anything else to stop: `,
     )
     if (answer !== CONFIRMATION) {
-      return { planned: plans, filesRewritten: 0, secretsRedacted: 0, confirmed: false }
+      return { planned: plans, untouched, filesRewritten: 0, secretsRedacted: 0, confirmed: false }
     }
 
     let filesRewritten = 0
@@ -73,14 +76,21 @@ export class WipeRun {
       filesRewritten++
     }
 
-    return { planned: plans, filesRewritten, secretsRedacted, confirmed: true }
+    return { planned: plans, untouched, filesRewritten, secretsRedacted, confirmed: true }
   }
 
-  async #plan(): Promise<readonly WipePlan[]> {
+  async #plan(): Promise<{ plans: readonly WipePlan[]; untouched: readonly string[] }> {
     const plans: WipePlan[] = []
+    const untouched: string[] = []
 
     for (const source of this.#sources) {
       for await (const file of source.discover()) {
+        if (file.messages !== undefined) {
+          if (!(await this.#holdsSecret(file.messages))) continue
+          untouched.push(file.path)
+          continue
+        }
+
         let lines = 0
         let secrets = 0
 
@@ -97,7 +107,21 @@ export class WipeRun {
       }
     }
 
-    return plans
+    return { plans, untouched }
+  }
+
+  /** True for a database that cannot be read: it may hold one, and saying
+   *  nothing about it would let a wipe pass for complete. */
+  async #holdsSecret(messages: ScanFile['messages']): Promise<boolean> {
+    if (messages == null) return true
+    try {
+      for await (const message of messages()) {
+        if (this.#scanner.secretsOf(message.text).size > 0) return true
+      }
+      return false
+    } catch {
+      return true
+    }
   }
 
   /** The rewrite below is textual and kind-blind; only counting needs to know

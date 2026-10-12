@@ -9,9 +9,9 @@ import { SourceName } from '#transcript/entry'
  * the scanner reads the raw line either way.
  *
  * Cursor also keeps older Ask-mode chats in SQLite (`state.vscdb` and
- * `conversation-search.db`). Those are deliberately out of scope: reading them
- * needs `node:sqlite`, which arrived in Node 22.5, and this package supports
- * Node 20. The README says so rather than leaving it as a silent gap.
+ * `conversation-search.db`). Those are not read yet. They would need the same
+ * feature-detected `node:sqlite` reader the opencode source uses, and a schema
+ * of their own. The README says so rather than leaving it as a silent gap.
  */
 export class CursorSource implements Source {
   readonly name = SourceName.cursor

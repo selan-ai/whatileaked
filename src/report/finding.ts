@@ -27,4 +27,12 @@ export interface ScanStats {
   /** Entries the engine refused. Surfaced rather than swallowed: a silent zero
    *  here would read as "nothing to find" when it means "not looked at". */
   unscannable: number
+  /** Files that were found and could not be read at all, each with the reason.
+   *  Listed by path: leaving one out would make a skipped database look clean. */
+  unread: UnreadFile[]
+}
+
+export interface UnreadFile {
+  path: string
+  reason: string
 }
