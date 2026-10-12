@@ -4,6 +4,7 @@ import type { Progress } from '#report/progress'
 import type { TerminalReporter } from '#report/terminal-reporter'
 import type { Match } from '#scan/match'
 import type { Scanner } from '#scan/scanner'
+import { isJsonl } from '#sources/listing'
 import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { TranscriptReader } from '#transcript/reader'
 
@@ -39,8 +40,10 @@ export class ScanRun {
 
     for (const source of this.#sources) {
       for await (const file of source.discover()) {
-        if (file.kind === FileKind.transcript) {
-          stats.transcripts++
+        if (file.kind === FileKind.transcript) stats.transcripts++
+        else stats.memoryFiles++
+
+        if (isJsonl(file.path)) {
           const reader = new TranscriptReader()
 
           for await (const entry of reader.read(file.path)) {
@@ -50,7 +53,8 @@ export class ScanRun {
           stats.entries += reader.stats.entries
           stats.skipped += reader.stats.skipped
         } else {
-          stats.memoryFiles++
+          // A pasted block is one message however many lines it runs to.
+          if (file.kind === FileKind.transcript) stats.entries++
 
           for await (const line of readLines(file.path)) {
             this.#collect(file, line.text, line.number, findings, stats)

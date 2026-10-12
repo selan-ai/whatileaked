@@ -3,6 +3,7 @@ import { readLines } from '#memory/reader'
 import { plural, shorten } from '#report/paths'
 import { bold, dim, red, yellow } from '#report/style'
 import type { Scanner } from '#scan/scanner'
+import { isJsonl } from '#sources/listing'
 import { FileKind, type ScanFile, type Source } from '#sources/source'
 import { TranscriptReader } from '#transcript/reader'
 import { CONFIRMATION, type Prompt } from '#wipe/confirm'
@@ -102,7 +103,7 @@ export class WipeRun {
   /** The rewrite below is textual and kind-blind; only counting needs to know
    *  which reader gets the file. */
   async *#textOf(file: ScanFile): AsyncIterable<string> {
-    if (file.kind === FileKind.memory) {
+    if (!isJsonl(file.path)) {
       for await (const line of readLines(file.path)) yield line.text
       return
     }

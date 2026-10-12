@@ -262,3 +262,19 @@ test('the preview counts memory findings in lines, not messages', async () => {
   assert.match(output, /1 secret in 1 line/)
   assert.ok(!output.includes('message'))
 })
+
+test('rewrites a cached paste, which is plain text rather than jsonl', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'whatileaked-wipe-'))
+  const dir = join(root, '.claude', 'paste-cache')
+  await mkdir(dir, { recursive: true })
+  const key = `AKIA${fakeBase32(81, 16)}`
+  const file = join(dir, '3f2a9c.txt')
+  await writeFile(file, ['[default]', `aws_access_key_id = ${key}`].join('\n'))
+
+  const outcome = await run(root, new ScriptedPrompt(CONFIRMATION)).run()
+
+  assert.equal(outcome.filesRewritten, 1)
+  const after = await readFile(file, 'utf8')
+  assert.ok(!after.includes(key))
+  assert.match(after, /^\[default\]\n/)
+})

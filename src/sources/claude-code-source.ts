@@ -27,6 +27,24 @@ export class ClaudeCodeSource implements Source {
       yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
     }
 
+    // Every prompt typed, with short pastes inline, and the full text of every
+    // long paste. Both went to the provider as part of a message, and both
+    // outlive the transcripts: the cleanup sweep deletes old sessions but leaves
+    // these, so a key pasted months ago may now survive only here.
+    const history = await resolveFile(join(this.#home, '.claude', 'history.jsonl'))
+    if (history !== null) {
+      yield { source: this.name, kind: FileKind.transcript, path: history, project: this.name }
+    }
+    const pastes = join(this.#home, '.claude', 'paste-cache')
+    for (const file of await listFiles(pastes, FileExtension.text)) {
+      yield {
+        source: this.name,
+        kind: FileKind.transcript,
+        path: join(pastes, file),
+        project: this.name,
+      }
+    }
+
     const root = join(this.#home, '.claude', 'projects')
 
     for (const slug of await listDirectories(root)) {
