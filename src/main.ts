@@ -2,7 +2,7 @@ import { homedir } from 'node:os'
 import { Command, parseCommand } from '#commands'
 import { UnknownCommandError } from '#errors'
 import { home } from '#report/home'
-import { plural } from '#report/paths'
+import { plural, shorten } from '#report/paths'
 import { Progress } from '#report/progress'
 import { bold, cyan, dim, green, red, yellow } from '#report/style'
 import { TerminalReporter } from '#report/terminal-reporter'
@@ -14,6 +14,7 @@ import { ScanRun } from '#scan-run'
 import { ClaudeCodeSource } from '#sources/claude-code-source'
 import { CodexSource } from '#sources/codex-source'
 import { CursorSource } from '#sources/cursor-source'
+import { OpencodeSource } from '#sources/opencode-source'
 import type { Source } from '#sources/source'
 import { TerminalPrompt } from '#wipe/confirm'
 import { WipeRun } from '#wipe/wipe-run'
@@ -41,6 +42,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     new ClaudeCodeSource(homedir()),
     new CodexSource(homedir()),
     new CursorSource(homedir()),
+    new OpencodeSource(homedir()),
   ]
   const scanner = new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))
 
@@ -83,7 +85,14 @@ async function wipe(
 
   const outcome = await new WipeRun(sources, scanner, new TerminalPrompt(), write).run()
 
+  for (const path of outcome.untouched) {
+    write(yellow(`  Not rewritten: ${shorten(path)} is a database, and wipe only rewrites text.`))
+    write(dim('  Delete those sessions in the agent itself, and rotate what they held.'))
+    write('')
+  }
+
   if (outcome.planned.length === 0) {
+    if (outcome.untouched.length > 0) return 1
     write(green('  No credentials found. Nothing to wipe.'))
     return 0
   }

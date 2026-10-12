@@ -208,10 +208,17 @@ npx whatileaked scan || echo "found something"
 | Claude Code | `~/.claude/projects/` · `~/.claude/history.jsonl` · `~/.claude/paste-cache/` · `~/.claude/CLAUDE.md` |
 | Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
+| opencode | `~/.local/share/opencode/opencode.db` |
 
-Cursor keeps its older Ask-mode chats in SQLite rather than jsonl, and those are
-not scanned. Reading them needs `node:sqlite`, which arrived in Node 22.5, and
-this runs on Node 20. Agent transcripts are covered; Ask history is not.
+opencode keeps its sessions in a SQLite database. Reading it needs Node's
+built-in `node:sqlite`, which loads without a flag from Node 22.13. On an older
+Node the scan still finds the file and says, in one line, that it was not
+scanned, so a skipped database never looks clean. Only the messages table is
+read, and `wipe` does not rewrite the database: delete those sessions in
+opencode, and rotate.
+
+Cursor keeps its older Ask-mode chats in SQLite as well, and those are not
+scanned yet. Agent transcripts are covered; Ask history is not.
 
 Transcripts record credentials that were already sent. So does prompt history,
 which keeps every prompt you typed and every long paste after the session itself

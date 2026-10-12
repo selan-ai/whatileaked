@@ -34,6 +34,8 @@ export class TerminalReporter {
     if (totals.length === 0) {
       this.#write(green('No credentials found.'))
       this.#write('')
+      this.#unread(stats)
+      if (stats.unread.length > 0) this.#write('')
       this.#write(dim(DISCLOSURE))
       this.#share(sent, stats)
       return
@@ -76,6 +78,8 @@ export class TerminalReporter {
       )
     }
 
+    this.#unread(stats)
+
     this.#write('')
     this.#write(dim('The 8-character code is a fingerprint, never the secret: a truncated'))
     this.#write(dim('SHA-256, so one credential shows the same code everywhere it leaked.'))
@@ -83,6 +87,14 @@ export class TerminalReporter {
     this.#write('')
     this.#write(dim(DISCLOSURE))
     this.#share(sent, stats)
+  }
+
+  /** One plain line per file found and not read. Printed under a clean result
+   *  too, which is exactly where leaving it out would mislead. */
+  #unread(stats: ScanStats): void {
+    for (const file of stats.unread) {
+      this.#write(yellow(`Found ${shorten(file.path)} but did not scan it: ${file.reason}.`))
+    }
   }
 
   /**

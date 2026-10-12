@@ -13,6 +13,7 @@ function render(findings: readonly Finding[]): string {
     entries: 400,
     skipped: 1,
     unscannable: 0,
+    unread: [],
   })
   return lines.join('\n')
 }
@@ -80,6 +81,7 @@ test('entries the engine refused are surfaced, not swallowed', () => {
     entries: 400,
     skipped: 1,
     unscannable: 7,
+    unread: [],
   })
   assert.match(lines.join('\n'), /7 messages could not be scanned/)
 })
@@ -92,6 +94,7 @@ test('counts memory files in the scanned line', () => {
     entries: 40,
     skipped: 0,
     unscannable: 0,
+    unread: [],
   })
 
   assert.match(lines.join('\n'), /3 transcripts · 40 messages · 2 memory files/)
