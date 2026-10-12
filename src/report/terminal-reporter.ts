@@ -35,6 +35,7 @@ export class TerminalReporter {
       this.#write(green('No credentials found.'))
       this.#write('')
       this.#write(dim(DISCLOSURE))
+      this.#share(sent, stats)
       return
     }
 
@@ -81,6 +82,24 @@ export class TerminalReporter {
     this.#write(dim('Some findings will be test fixtures — open the file to tell.'))
     this.#write('')
     this.#write(dim(DISCLOSURE))
+    this.#share(sent, stats)
+  }
+
+  /**
+   * The one line meant to be pasted somewhere public. Everything above it names
+   * projects, paths and fingerprints, so nobody shares it; this is counts only,
+   * and stays that way. It is last so a screenshot can crop to it, unstyled so
+   * a copy carries nothing but the words, and it repeats the headline's
+   * transmitted-only count for the same reason the headline keeps memory files
+   * out of it.
+   */
+  #share(sent: number, stats: ScanStats): void {
+    const credentials = sent === 0 ? 'no credentials' : plural(sent, 'credential')
+    this.#write('')
+    this.#write(
+      `whatileaked: ${credentials} sent to a model provider, ` +
+        `across ${plural(stats.transcripts, 'transcript')}.`,
+    )
   }
 }
 

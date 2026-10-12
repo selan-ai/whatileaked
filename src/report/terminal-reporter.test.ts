@@ -155,3 +155,31 @@ test('a single memory occurrence reads as one line, not one send', () => {
   assert.match(output, /on one line/)
   assert.ok(!output.includes('sent once'))
 })
+
+test('ends with a line that can be shared, made only of counts', () => {
+  const dirty = render([finding, { ...finding, fingerprint: '7e1d44b9aaaa', at: 900 }])
+  const shared = dirty.split('\n').at(-1) ?? ''
+
+  assert.equal(
+    shared,
+    'whatileaked: 2 credentials sent to a model provider, across 12 transcripts.',
+  )
+  for (const leak of ['billing-api', 'abc-123', '0a3f8c21', '7e1d44b9', 'aws-access-token']) {
+    assert.ok(!shared.includes(leak), `shareable line carries ${leak}`)
+  }
+})
+
+test('a clean scan ends with the same shareable line', () => {
+  assert.equal(
+    render([]).split('\n').at(-1),
+    'whatileaked: no credentials sent to a model provider, across 12 transcripts.',
+  )
+})
+
+test('the shareable line does not count memory files as sent', () => {
+  const output = render([{ ...finding, kind: FileKind.memory, file: '/h/.claude/CLAUDE.md' }])
+  assert.equal(
+    output.split('\n').at(-1),
+    'whatileaked: no credentials sent to a model provider, across 12 transcripts.',
+  )
+})

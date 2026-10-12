@@ -105,6 +105,17 @@ same credential always produces the same code, so two rows sharing a code are
 one key you reused in two places, and two different codes are two different
 keys.
 
+### Sharing it
+
+The last line of every scan is made only of counts — no project, path, rule or
+fingerprint — so it is the part you can paste or screenshot anywhere:
+
+```
+whatileaked: 3 credentials sent to a model provider, across 561 transcripts.
+```
+
+A clean scan ends the same way, with `no credentials`.
+
 ---
 
 ## Is it a real key, or just a test fixture?
