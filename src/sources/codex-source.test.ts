@@ -74,3 +74,13 @@ test('finds the global instruction file', async () => {
   assert.equal(found[0]?.kind, FileKind.memory)
   assert.equal(found[0]?.project, 'codex')
 })
+
+test('finds the prompt history', async () => {
+  const root = await home()
+  await mkdir(join(root, '.codex'), { recursive: true })
+  await writeFile(join(root, '.codex', 'history.jsonl'), '{"session_id":"s","ts":1,"text":"hi"}')
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.transcript)
+  assert.equal(found[0]?.project, 'codex')
+})

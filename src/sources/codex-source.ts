@@ -19,6 +19,13 @@ export class CodexSource implements Source {
       yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
     }
 
+    // Every prompt typed into any session, kept after the session's rollout is
+    // archived or deleted. Each line was sent, so it is a transcript.
+    const history = await resolveFile(join(this.#home, '.codex', 'history.jsonl'))
+    if (history !== null) {
+      yield { source: this.name, kind: FileKind.transcript, path: history, project: this.name }
+    }
+
     // Archiving a conversation in Codex moves its rollout out of `sessions/`
     // into `archived_sessions/`. Archived is not deleted — everything in it was
     // still sent — and reading only `sessions/` reported a clean machine for

@@ -14,11 +14,18 @@ export async function listDirectories(root: string): Promise<readonly string[]> 
   }
 }
 
-/** The two extensions this tool reads. A literal at the call site would not
- *  fail on a typo — it would list nothing and report a clean machine. */
-export const FileExtension = { jsonl: '.jsonl', markdown: '.md' } as const
+/** The extensions this tool reads. A literal at the call site would not fail on
+ *  a typo — it would list nothing and report a clean machine. */
+export const FileExtension = { jsonl: '.jsonl', markdown: '.md', text: '.txt' } as const
 
 export type FileExtension = (typeof FileExtension)[keyof typeof FileExtension]
+
+/** Whether a file is read as one JSON entry per line rather than as plain
+ *  lines. Decided by extension, not kind: a pasted block is sent like any
+ *  message but is stored as the raw text, with no JSON around it. */
+export function isJsonl(path: string): boolean {
+  return path.endsWith(FileExtension.jsonl)
+}
 
 export async function listFiles(dir: string, extension: FileExtension): Promise<readonly string[]> {
   try {

@@ -135,3 +135,21 @@ test('a memory file borrows the project name its sibling transcripts resolved', 
   // must not appear under two spellings in one report.
   assert.equal(memory[0]?.project, 'alpha')
 })
+
+test('finds the prompt history and every cached paste', async () => {
+  const root = await home()
+  await mkdir(join(root, '.claude', 'paste-cache'), { recursive: true })
+  await writeFile(join(root, '.claude', 'history.jsonl'), '{"display":"hi"}')
+  await writeFile(join(root, '.claude', 'paste-cache', '3f2a9c.txt'), 'pasted text')
+  await writeFile(join(root, '.claude', 'paste-cache', 'notes.md'), 'ignored')
+  const found = await discover(root)
+  assert.deepEqual(
+    found.map((file) => file.path.slice(root.length)).sort(),
+    ['/.claude/history.jsonl', '/.claude/paste-cache/3f2a9c.txt'].map((path) => join(path)),
+  )
+  // Both were typed into a prompt, so both were sent: transcripts, not memory.
+  for (const file of found) {
+    assert.equal(file.kind, FileKind.transcript)
+    assert.equal(file.project, 'claude-code')
+  }
+})

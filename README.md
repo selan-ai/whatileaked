@@ -205,18 +205,19 @@ npx whatileaked scan || echo "found something"
 
 | Agent | Folder |
 | --- | --- |
-| Claude Code | `~/.claude/projects/` · `~/.claude/CLAUDE.md` |
-| Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/AGENTS.md` |
+| Claude Code | `~/.claude/projects/` · `~/.claude/history.jsonl` · `~/.claude/paste-cache/` · `~/.claude/CLAUDE.md` |
+| Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 
 Cursor keeps its older Ask-mode chats in SQLite rather than jsonl, and those are
 not scanned. Reading them needs `node:sqlite`, which arrived in Node 22.5, and
 this runs on Node 20. Agent transcripts are covered; Ask history is not.
 
-Transcripts record credentials that were already sent. Instruction and memory
-files are worse: they are read again at the start of the next session, so a
-credential in one keeps leaking until the file is edited. Both are scanned, and
-`wipe` rewrites both.
+Transcripts record credentials that were already sent. So does prompt history,
+which keeps every prompt you typed and every long paste after the session itself
+has been cleaned up. Instruction and memory files are worse: they are read again
+at the start of the next session, so a credential in one keeps leaking until the
+file is edited. All of them are scanned, and `wipe` rewrites all of them.
 
 Nowhere else. It does not read your repos, your shell history, or your
 environment. Adding support for another agent is one small file — pull requests

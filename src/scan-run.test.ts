@@ -79,3 +79,40 @@ test('a clean home reports zero', async () => {
   )
   assert.equal(await run.run(), 0)
 })
+
+test('finds a planted key in prompt history and in a cached paste', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'whatileaked-e2e-'))
+  await mkdir(join(root, '.claude', 'paste-cache'), { recursive: true })
+
+  const inHistory = `AKIA${fakeBase32(31, 16)}`
+  const inPaste = `AKIA${fakeBase32(32, 16)}`
+  await writeFile(
+    join(root, '.claude', 'history.jsonl'),
+    JSON.stringify({
+      display: 'deploy with [Pasted text #1 +2 lines]',
+      pastedContents: { 1: { id: 1, type: 'text', content: `AWS_ACCESS_KEY_ID=${inHistory}\n` } },
+      timestamp: 1760000000000,
+      project: '/Users/t/Repositories/deploy-tool',
+    }),
+  )
+  // The raw paste, not JSON: read as lines, it must not be skipped as malformed.
+  await writeFile(
+    join(root, '.claude', 'paste-cache', '3f2a9c.txt'),
+    ['[default]', `aws_access_key_id = ${inPaste}`].join('\n'),
+  )
+
+  const lines: string[] = []
+  const run = new ScanRun(
+    [new ClaudeCodeSource(root)],
+    scanner(),
+    new TerminalReporter((line) => lines.push(line)),
+    new Progress(() => {}, false),
+  )
+
+  assert.equal(await run.run(), 2)
+  const output = lines.join('\n')
+  assert.match(output, /history\.jsonl/)
+  assert.match(output, /paste-cache/)
+  assert.match(output, /2 credentials sent to a model provider/)
+  assert.ok(!output.includes(inHistory) && !output.includes(inPaste))
+})
