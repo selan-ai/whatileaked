@@ -86,6 +86,21 @@ test('entries the engine refused are surfaced, not swallowed', () => {
   assert.match(lines.join('\n'), /7 messages could not be scanned/)
 })
 
+test('a clean scan still says how many messages were not scanned', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 12,
+    memoryFiles: 0,
+    entries: 400,
+    skipped: 1,
+    unscannable: 7,
+    unread: [],
+  })
+  const output = lines.join('\n')
+  assert.match(output, /No credentials found/)
+  assert.match(output, /7 messages could not be scanned/)
+})
+
 test('counts memory files in the scanned line', () => {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report([], {

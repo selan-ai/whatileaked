@@ -34,8 +34,7 @@ export class TerminalReporter {
     if (totals.length === 0) {
       this.#write(green('No credentials found.'))
       this.#write('')
-      this.#unread(stats)
-      if (stats.unread.length > 0) this.#write('')
+      if (this.#notScanned(stats)) this.#write('')
       this.#write(dim(DISCLOSURE))
       this.#share(sent, stats)
       return
@@ -72,13 +71,7 @@ export class TerminalReporter {
       )
     }
 
-    if (stats.unscannable > 0) {
-      this.#write(
-        yellow(`${plural(stats.unscannable, 'message')} could not be scanned and are not counted.`),
-      )
-    }
-
-    this.#unread(stats)
+    this.#notScanned(stats)
 
     this.#write('')
     this.#write(dim('The 8-character code is a fingerprint, never the secret: a truncated'))
@@ -89,12 +82,23 @@ export class TerminalReporter {
     this.#share(sent, stats)
   }
 
-  /** One plain line per file found and not read. Printed under a clean result
-   *  too, which is exactly where leaving it out would mislead. */
-  #unread(stats: ScanStats): void {
+  /**
+   * Everything that was found and not looked at: refused messages, then one
+   * plain line per file not read. Printed under a clean result too, which is
+   * exactly where leaving it out would mislead — a clean scan once returned
+   * before the refused count, so a partial scan read as a clean one. Answers
+   * whether it wrote anything.
+   */
+  #notScanned(stats: ScanStats): boolean {
+    if (stats.unscannable > 0) {
+      this.#write(
+        yellow(`${plural(stats.unscannable, 'message')} could not be scanned and are not counted.`),
+      )
+    }
     for (const file of stats.unread) {
       this.#write(yellow(`Found ${shorten(file.path)} but did not scan it: ${file.reason}.`))
     }
+    return stats.unscannable > 0 || stats.unread.length > 0
   }
 
   /**
