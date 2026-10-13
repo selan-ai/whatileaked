@@ -58,7 +58,7 @@ is all — no network connection is made at any point.
 ### When it finds nothing
 
 ```
-  scanned 561 transcripts · 197,016 messages
+  scanned 561 transcripts · 197,016 messages · 3 memory files
 
 No credentials found.
 ```
@@ -68,7 +68,7 @@ Nothing to do. This is the good outcome.
 ### When it finds something
 
 ```
-  scanned 561 transcripts · 196,986 messages
+  scanned 561 transcripts · 196,986 messages · 3 memory files
 
 * aws-access-token  2 secrets
     f0b93847  billing-api            sent 25 times
