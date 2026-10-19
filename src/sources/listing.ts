@@ -29,7 +29,24 @@ export type FileExtension = (typeof FileExtension)[keyof typeof FileExtension]
  *  lines. Decided by extension, not kind: a pasted block is sent like any
  *  message but is stored as the raw text, with no JSON around it. */
 export function isJsonl(path: string): boolean {
-  return path.endsWith(FileExtension.jsonl)
+  return path.endsWith(FileExtension.jsonl) || supersededJsonl.test(path)
+}
+
+/** A transcript Claude Code set aside rather than overwrite when it rewrote a
+ *  session: `<session>.jsonl.superseded-<timestamp>`. The suffix hides the
+ *  extension, but the content is the same JSONL and every line of it was sent. */
+const supersededJsonl = /\.jsonl\.superseded-[^/\\]+$/
+
+/** The JSONL files in a directory, set-aside transcripts included. */
+export async function listJsonl(dir: string): Promise<readonly string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    return entries
+      .filter((entry) => entry.isFile() && isJsonl(entry.name))
+      .map((entry) => entry.name)
+  } catch {
+    return []
+  }
 }
 
 export async function listFiles(dir: string, extension: FileExtension): Promise<readonly string[]> {

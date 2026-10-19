@@ -3,6 +3,7 @@ import {
   FileExtension,
   listDirectories,
   listFiles,
+  listJsonl,
   resolveFile,
   walkDirectories,
 } from '#sources/listing'
@@ -58,7 +59,7 @@ export class ClaudeCodeSource implements Source {
       // count printed after a scan was smaller than the number of transcripts
       // on disk while claiming to be all of them.
       for (const nested of await walkDirectories(dir)) {
-        for (const file of await listFiles(nested, FileExtension.jsonl)) {
+        for (const file of await listJsonl(nested)) {
           const path = join(nested, file)
           const cwd = await firstCwd(path)
           if (cwd !== null) project = basename(cwd)
