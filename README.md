@@ -220,6 +220,8 @@ opencode, and rotate.
 Cursor keeps its older Ask-mode chats in SQLite as well, and those are not
 scanned yet. Agent transcripts are covered; Ask history is not.
 
+Claude Code transcripts it set aside (`*.jsonl.superseded-*`) are scanned too.
+
 Transcripts record credentials that were already sent. So does prompt history,
 which keeps every prompt you typed and every long paste after the session itself
 has been cleaned up. Instruction and memory files are worse: they are read again

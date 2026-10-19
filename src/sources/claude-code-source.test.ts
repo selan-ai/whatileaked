@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { ClaudeCodeSource } from '#sources/claude-code-source'
+import { isJsonl } from '#sources/listing'
 import { FileKind, type ScanFile } from '#sources/source'
 
 const home = async (): Promise<string> => await mkdtemp(join(tmpdir(), 'whatileaked-home-'))
@@ -50,6 +51,27 @@ test('ignores files that are not jsonl', async () => {
   await writeFile(join(dir, 'notes.md'), 'nothing here')
 
   assert.deepEqual(await discover(root), [])
+})
+
+test('finds a transcript Claude Code set aside as superseded and reads it as jsonl', async () => {
+  const root = await home()
+  const dir = join(root, '.claude', 'projects', '-Users-t-Repositories-deploy-tool')
+  await mkdir(dir, { recursive: true })
+  const path = join(dir, 'abc-123.jsonl.superseded-1760860800000')
+  await writeFile(
+    path,
+    JSON.stringify({
+      sessionId: 'abc-123',
+      cwd: '/Users/t/Repositories/deploy-tool',
+      type: 'user',
+    }),
+  )
+
+  const found = await discover(root)
+  assert.equal(found.length, 1)
+  assert.equal(found[0]?.kind, FileKind.transcript)
+  assert.equal(found[0]?.project, 'deploy-tool')
+  assert.ok(isJsonl(path))
 })
 
 test('yields nothing when the directory does not exist', async () => {
