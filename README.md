@@ -206,7 +206,7 @@ npx whatileaked scan || echo "found something"
 | Agent | Folder |
 | --- | --- |
 | Claude Code | `~/.claude/projects/` · `~/.claude/history.jsonl` · `~/.claude/paste-cache/` · `~/.claude/CLAUDE.md` |
-| Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` |
+| Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` · `~/.codex/AGENTS.override.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 | opencode | `~/.local/share/opencode/opencode.db` |
 

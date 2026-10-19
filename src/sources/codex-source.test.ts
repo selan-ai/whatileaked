@@ -75,6 +75,22 @@ test('finds the global instruction file', async () => {
   assert.equal(found[0]?.project, 'codex')
 })
 
+test('finds the global override instruction file, which Codex loads instead of AGENTS.md', async () => {
+  const root = await home()
+  await mkdir(join(root, '.codex'), { recursive: true })
+  await writeFile(join(root, '.codex', 'AGENTS.override.md'), '# override')
+  await writeFile(join(root, '.codex', 'AGENTS.md'), '# instructions')
+
+  const found = await discover(root)
+  assert.deepEqual(
+    found.map((file) => [file.path.endsWith('AGENTS.override.md'), file.kind]),
+    [
+      [true, FileKind.memory],
+      [false, FileKind.memory],
+    ],
+  )
+})
+
 test('finds the prompt history', async () => {
   const root = await home()
   await mkdir(join(root, '.codex'), { recursive: true })
