@@ -14,9 +14,15 @@ export class CodexSource implements Source {
   }
 
   async *discover(): AsyncIterable<ScanFile> {
-    const instructions = await resolveFile(join(this.#home, '.codex', 'AGENTS.md'))
-    if (instructions !== null) {
-      yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
+    // Codex loads `AGENTS.override.md` in place of `AGENTS.md` when it has any
+    // text, so the override is the file sent. `AGENTS.md` stays scanned: it was
+    // sent in every session before the override existed, and is again once the
+    // override is emptied.
+    for (const name of ['AGENTS.override.md', 'AGENTS.md']) {
+      const instructions = await resolveFile(join(this.#home, '.codex', name))
+      if (instructions !== null) {
+        yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
+      }
     }
 
     // Every prompt typed into any session, kept after the session's rollout is
