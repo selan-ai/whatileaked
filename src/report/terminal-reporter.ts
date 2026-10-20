@@ -107,14 +107,20 @@ export class TerminalReporter {
    * and stays that way. It is last so a screenshot can crop to it, unstyled so
    * a copy carries nothing but the words, and it repeats the headline's
    * transmitted-only count for the same reason the headline keeps memory files
-   * out of it.
+   * out of it. A partial scan says so here in counts, because this is the line
+   * that gets cropped to: without it a pasted "no credentials" overclaims.
    */
   #share(sent: number, stats: ScanStats): void {
     const credentials = sent === 0 ? 'no credentials' : plural(sent, 'credential')
+    const missed = [
+      ...(stats.unscannable > 0 ? [plural(stats.unscannable, 'message')] : []),
+      ...(stats.unread.length > 0 ? [plural(stats.unread.length, 'file')] : []),
+    ]
+    const partial = missed.length === 0 ? '' : ` (${missed.join(' and ')} not scanned)`
     this.#write('')
     this.#write(
       `whatileaked: ${credentials} sent to a model provider, ` +
-        `across ${plural(stats.transcripts, 'transcript')}.`,
+        `across ${plural(stats.transcripts, 'transcript')}${partial}.`,
     )
   }
 }
