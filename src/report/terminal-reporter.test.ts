@@ -201,3 +201,23 @@ test('the shareable line does not count memory files as sent', () => {
     'whatileaked: no credentials sent to a model provider, across 12 transcripts.',
   )
 })
+
+test('the shareable line says, in counts, what a partial scan did not look at', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 12,
+    memoryFiles: 0,
+    entries: 400,
+    skipped: 1,
+    unscannable: 7,
+    unread: [{ path: '/h/.local/share/opencode/opencode.db', reason: 'needs Node 22.13' }],
+  })
+  const shared = lines.at(-1) ?? ''
+
+  assert.equal(
+    shared,
+    'whatileaked: no credentials sent to a model provider, across 12 transcripts ' +
+      '(7 messages and 1 file not scanned).',
+  )
+  assert.ok(!shared.includes('opencode'), 'shareable line carries a path')
+})

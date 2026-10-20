@@ -114,7 +114,9 @@ fingerprint — so it is the part you can paste or screenshot anywhere:
 whatileaked: 3 credentials sent to a model provider, across 561 transcripts.
 ```
 
-A clean scan ends the same way, with `no credentials`.
+A clean scan ends the same way, with `no credentials`. If some of it could not
+be scanned, the line says how much, still in counts only — `(7 messages and 1
+file not scanned)` — so a pasted partial scan never reads as a clean one.
 
 ---
 
