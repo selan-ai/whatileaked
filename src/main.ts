@@ -1,4 +1,5 @@
 import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { Command, parseCommand } from '#commands'
 import { UnknownCommandError } from '#errors'
 import { home } from '#report/home'
@@ -14,6 +15,7 @@ import { ScanRun } from '#scan-run'
 import { ClaudeCodeSource } from '#sources/claude-code-source'
 import { CodexSource } from '#sources/codex-source'
 import { CursorSource } from '#sources/cursor-source'
+import { GeminiCliSource } from '#sources/gemini-cli-source'
 import { OpencodeSource } from '#sources/opencode-source'
 import type { Source } from '#sources/source'
 import { stateDirs } from '#sources/state-dirs'
@@ -47,6 +49,12 @@ export async function main(argv: readonly string[]): Promise<number> {
       (dir) => new CodexSource(homedir(), dir),
     ),
     new CursorSource(homedir()),
+    // GEMINI_CLI_HOME stands in for the home directory, not for `.gemini`.
+    ...stateDirs(
+      homedir(),
+      '.gemini',
+      process.env.GEMINI_CLI_HOME ? join(process.env.GEMINI_CLI_HOME, '.gemini') : undefined,
+    ).map((dir) => new GeminiCliSource(homedir(), dir)),
     new OpencodeSource(homedir()),
   ]
   const scanner = new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))

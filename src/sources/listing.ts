@@ -18,6 +18,7 @@ export async function listDirectories(root: string): Promise<readonly string[]> 
  *  a typo — it would list nothing and report a clean machine. */
 export const FileExtension = {
   jsonl: '.jsonl',
+  json: '.json',
   markdown: '.md',
   text: '.txt',
   database: '.db',
