@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -99,4 +99,16 @@ test('finds the prompt history', async () => {
   assert.equal(found.length, 1)
   assert.equal(found[0]?.kind, FileKind.transcript)
   assert.equal(found[0]?.project, 'codex')
+})
+
+test('reads a state folder that CODEX_HOME moved out of the home directory', async () => {
+  const moved = await mkdtemp(join(tmpdir(), 'whatileaked-codex-home-'))
+  await writeFile(join(moved, 'history.jsonl'), '{"text":"hello"}\n')
+
+  const found: ScanFile[] = []
+  for await (const file of new CodexSource('/nonexistent', moved).discover()) found.push(file)
+  assert.deepEqual(
+    found.map((file) => file.path),
+    [join(await realpath(moved), 'history.jsonl')],
+  )
 })

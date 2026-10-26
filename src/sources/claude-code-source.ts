@@ -14,14 +14,16 @@ import { stringField } from '#transcript/shape'
 
 export class ClaudeCodeSource implements Source {
   readonly name = SourceName['claude-code']
-  readonly #home: string
+  readonly #dir: string
 
-  constructor(home: string) {
-    this.#home = home
+  /** `dir` is where Claude Code keeps its state: `~/.claude`, or wherever
+   *  `CLAUDE_CONFIG_DIR` moved it. */
+  constructor(home: string, dir: string = join(home, '.claude')) {
+    this.#dir = dir
   }
 
   async *discover(): AsyncIterable<ScanFile> {
-    const instructions = await resolveFile(join(this.#home, '.claude', 'CLAUDE.md'))
+    const instructions = await resolveFile(join(this.#dir, 'CLAUDE.md'))
     if (instructions !== null) {
       // No project owns this file — it loads into every session regardless of
       // where the agent is running, so the source name is the honest label.
@@ -32,11 +34,11 @@ export class ClaudeCodeSource implements Source {
     // long paste. Both went to the provider as part of a message, and both
     // outlive the transcripts: the cleanup sweep deletes old sessions but leaves
     // these, so a key pasted months ago may now survive only here.
-    const history = await resolveFile(join(this.#home, '.claude', 'history.jsonl'))
+    const history = await resolveFile(join(this.#dir, 'history.jsonl'))
     if (history !== null) {
       yield { source: this.name, kind: FileKind.transcript, path: history, project: this.name }
     }
-    const pastes = join(this.#home, '.claude', 'paste-cache')
+    const pastes = join(this.#dir, 'paste-cache')
     for (const file of await listFiles(pastes, FileExtension.text)) {
       yield {
         source: this.name,
@@ -46,7 +48,7 @@ export class ClaudeCodeSource implements Source {
       }
     }
 
-    const root = join(this.#home, '.claude', 'projects')
+    const root = join(this.#dir, 'projects')
 
     for (const slug of await listDirectories(root)) {
       const dir = join(root, slug)
