@@ -1,6 +1,6 @@
 ---
 name: whatileaked
-description: Scan local Claude Code, Codex and Cursor transcripts and instruction files (CLAUDE.md, AGENTS.md) for credentials that were already sent to a model provider. Use when the user asks about leaked keys, agent history hygiene, rotating credentials, or cleaning up before sharing a machine.
+description: Scan local Claude Code, Codex, Cursor, opencode and Gemini CLI transcripts and instruction files (CLAUDE.md, AGENTS.md, GEMINI.md) for credentials that were already sent to a model provider. Use when the user asks about leaked keys, agent history hygiene, rotating credentials, or cleaning up before sharing a machine.
 ---
 
 # whatileaked

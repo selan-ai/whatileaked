@@ -4,6 +4,7 @@ export const SourceName = {
   'claude-code': 'claude-code',
   codex: 'codex',
   cursor: 'cursor',
+  'gemini-cli': 'gemini-cli',
   opencode: 'opencode',
 } as const
 

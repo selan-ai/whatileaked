@@ -4,8 +4,8 @@
 
 Your coding agent saves every conversation to your disk. If you ever pasted an
 API key into a chat, or asked the agent to read a `.env` file, that key is now
-sitting in a log file on your laptop — and it was uploaded to Anthropic or
-OpenAI the moment you sent the message.
+sitting in a log file on your laptop — and it was uploaded to Anthropic,
+OpenAI or Google the moment you sent the message.
 
 Secret scanners point at repositories and CI. You can aim one at `~/.claude` by
 hand, but nobody does — it is not a repo, it is not in CI, and it does not look
@@ -211,6 +211,7 @@ npx whatileaked scan || echo "found something"
 | Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` · `~/.codex/AGENTS.override.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 | opencode | `~/.local/share/opencode/opencode.db` |
+| Gemini CLI | `~/.gemini/tmp/*/chats/` · `~/.gemini/tmp/*/memory/` · `~/.gemini/GEMINI.md` |
 
 opencode keeps its sessions in a SQLite database. Reading it needs Node's
 built-in `node:sqlite`, which loads without a flag from Node 22.13. On an older
@@ -224,9 +225,10 @@ scanned yet. Agent transcripts are covered; Ask history is not.
 
 Claude Code transcripts it set aside (`*.jsonl.superseded-*`) are scanned too.
 
-If you moved Claude Code's folder with `CLAUDE_CONFIG_DIR`, or Codex's with
-`CODEX_HOME`, the folder it names is scanned as well as the default one, which
-still holds every session from before the move.
+If you moved Claude Code's folder with `CLAUDE_CONFIG_DIR`, Codex's with
+`CODEX_HOME`, or Gemini CLI's with `GEMINI_CLI_HOME`, the folder it names is
+scanned as well as the default one, which still holds every session from before
+the move.
 
 Transcripts record credentials that were already sent. So does prompt history,
 which keeps every prompt you typed and every long paste after the session itself
@@ -235,8 +237,8 @@ at the start of the next session, so a credential in one keeps leaking until the
 file is edited. All of them are scanned, and `wipe` rewrites all of them.
 
 Nowhere else. It does not read your repos, your shell history, or your
-environment — beyond those two variables, to know where to look. Adding support for another agent is one small file — pull requests
-welcome.
+environment — beyond those three variables, to know where to look. Adding
+support for another agent is one small file — pull requests welcome.
 
 ---
 
