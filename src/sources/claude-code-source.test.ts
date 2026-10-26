@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -174,4 +174,16 @@ test('finds the prompt history and every cached paste', async () => {
     assert.equal(file.kind, FileKind.transcript)
     assert.equal(file.project, 'claude-code')
   }
+})
+
+test('reads a state folder that CLAUDE_CONFIG_DIR moved out of the home directory', async () => {
+  const moved = await mkdtemp(join(tmpdir(), 'whatileaked-claude-config-'))
+  await writeFile(join(moved, 'history.jsonl'), '{"display":"hello"}\n')
+
+  const found: ScanFile[] = []
+  for await (const file of new ClaudeCodeSource('/nonexistent', moved).discover()) found.push(file)
+  assert.deepEqual(
+    found.map((file) => file.path),
+    [join(await realpath(moved), 'history.jsonl')],
+  )
 })

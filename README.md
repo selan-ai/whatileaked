@@ -224,6 +224,10 @@ scanned yet. Agent transcripts are covered; Ask history is not.
 
 Claude Code transcripts it set aside (`*.jsonl.superseded-*`) are scanned too.
 
+If you moved Claude Code's folder with `CLAUDE_CONFIG_DIR`, or Codex's with
+`CODEX_HOME`, the folder it names is scanned as well as the default one, which
+still holds every session from before the move.
+
 Transcripts record credentials that were already sent. So does prompt history,
 which keeps every prompt you typed and every long paste after the session itself
 has been cleaned up. Instruction and memory files are worse: they are read again
@@ -231,7 +235,7 @@ at the start of the next session, so a credential in one keeps leaking until the
 file is edited. All of them are scanned, and `wipe` rewrites all of them.
 
 Nowhere else. It does not read your repos, your shell history, or your
-environment. Adding support for another agent is one small file — pull requests
+environment — beyond those two variables, to know where to look. Adding support for another agent is one small file — pull requests
 welcome.
 
 ---

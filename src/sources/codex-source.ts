@@ -7,10 +7,12 @@ import { objectField, stringField } from '#transcript/shape'
 
 export class CodexSource implements Source {
   readonly name = SourceName.codex
-  readonly #home: string
+  readonly #dir: string
 
-  constructor(home: string) {
-    this.#home = home
+  /** `dir` is where Codex keeps its state: `~/.codex`, or wherever
+   *  `CODEX_HOME` moved it. */
+  constructor(home: string, dir: string = join(home, '.codex')) {
+    this.#dir = dir
   }
 
   async *discover(): AsyncIterable<ScanFile> {
@@ -19,7 +21,7 @@ export class CodexSource implements Source {
     // sent in every session before the override existed, and is again once the
     // override is emptied.
     for (const name of ['AGENTS.override.md', 'AGENTS.md']) {
-      const instructions = await resolveFile(join(this.#home, '.codex', name))
+      const instructions = await resolveFile(join(this.#dir, name))
       if (instructions !== null) {
         yield { source: this.name, kind: FileKind.memory, path: instructions, project: this.name }
       }
@@ -27,7 +29,7 @@ export class CodexSource implements Source {
 
     // Every prompt typed into any session, kept after the session's rollout is
     // archived or deleted. Each line was sent, so it is a transcript.
-    const history = await resolveFile(join(this.#home, '.codex', 'history.jsonl'))
+    const history = await resolveFile(join(this.#dir, 'history.jsonl'))
     if (history !== null) {
       yield { source: this.name, kind: FileKind.transcript, path: history, project: this.name }
     }
@@ -37,7 +39,7 @@ export class CodexSource implements Source {
     // still sent — and reading only `sessions/` reported a clean machine for
     // exactly the conversations someone had tidied away.
     for (const root of ['sessions', 'archived_sessions']) {
-      for (const dir of await walkDirectories(join(this.#home, '.codex', root))) {
+      for (const dir of await walkDirectories(join(this.#dir, root))) {
         for (const file of await listFiles(dir, FileExtension.jsonl)) {
           const path = join(dir, file)
           const cwd = await firstCwd(path)

@@ -16,6 +16,7 @@ import { CodexSource } from '#sources/codex-source'
 import { CursorSource } from '#sources/cursor-source'
 import { OpencodeSource } from '#sources/opencode-source'
 import type { Source } from '#sources/source'
+import { stateDirs } from '#sources/state-dirs'
 import { TerminalPrompt } from '#wipe/confirm'
 import { WipeRun } from '#wipe/wipe-run'
 
@@ -39,8 +40,12 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   const sources: readonly Source[] = [
-    new ClaudeCodeSource(homedir()),
-    new CodexSource(homedir()),
+    ...stateDirs(homedir(), '.claude', process.env.CLAUDE_CONFIG_DIR).map(
+      (dir) => new ClaudeCodeSource(homedir(), dir),
+    ),
+    ...stateDirs(homedir(), '.codex', process.env.CODEX_HOME).map(
+      (dir) => new CodexSource(homedir(), dir),
+    ),
     new CursorSource(homedir()),
     new OpencodeSource(homedir()),
   ]
