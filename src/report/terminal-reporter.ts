@@ -25,8 +25,8 @@ export class TerminalReporter {
     // read as a bug.
     this.#write(
       dim(
-        `  scanned ${count(stats.transcripts)} transcripts · ` +
-          `${count(stats.entries)} messages · ${count(stats.memoryFiles)} memory files`,
+        `  scanned ${plural(stats.transcripts, 'transcript')} · ` +
+          `${plural(stats.entries, 'message')} · ${plural(stats.memoryFiles, 'memory file')}`,
       ),
     )
     this.#write('')
@@ -92,7 +92,9 @@ export class TerminalReporter {
   #notScanned(stats: ScanStats): boolean {
     if (stats.unscannable > 0) {
       this.#write(
-        yellow(`${plural(stats.unscannable, 'message')} could not be scanned and are not counted.`),
+        yellow(
+          `${plural(stats.unscannable, 'message')} could not be scanned and ${stats.unscannable === 1 ? 'is' : 'are'} not counted.`,
+        ),
       )
     }
     for (const file of stats.unread) {
