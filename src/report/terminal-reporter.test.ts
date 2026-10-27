@@ -115,6 +115,22 @@ test('counts memory files in the scanned line', () => {
   assert.match(lines.join('\n'), /3 transcripts · 40 messages · 2 memory files/)
 })
 
+test('a count of one reads in the singular', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 1,
+    memoryFiles: 1,
+    entries: 1,
+    skipped: 0,
+    unscannable: 1,
+    unread: [],
+  })
+  const output = lines.join('\n')
+
+  assert.match(output, /scanned 1 transcript · 1 message · 1 memory file$/m)
+  assert.match(output, /^1 message could not be scanned and is not counted\.$/m)
+})
+
 test('says nothing about files on disk when every finding is a transcript', () => {
   const output = render([finding])
   assert.match(output, /1 credential sent to a model provider/)
