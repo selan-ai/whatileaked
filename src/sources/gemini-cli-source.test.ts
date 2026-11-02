@@ -74,11 +74,29 @@ test('finds the global GEMINI.md and project memory as memory files', async () =
   assert.equal(found[0]?.path, join(await realpath(root), '.gemini', 'GEMINI.md'))
 })
 
-test('ignores files outside chats and memory', async () => {
+test('finds the prompt log and saved chats that outlive session retention', async () => {
   const root = await home()
   const project = join(root, '.gemini', 'tmp', 'alpha')
   await mkdir(project, { recursive: true })
-  await writeFile(join(project, 'logs.json'), '[]')
+  await writeFile(
+    join(project, 'logs.json'),
+    JSON.stringify([{ sessionId: 's1', messageId: 0, type: 'user', message: 'hello' }]),
+  )
+  await writeFile(join(project, 'checkpoint-before%20deploy.json'), '{"history":[]}')
+
+  const found = await discover(root)
+  assert.deepEqual(found.map((file) => [file.kind, file.project, file.path]).sort(), [
+    [FileKind.transcript, 'alpha', join(project, 'checkpoint-before%20deploy.json')],
+    [FileKind.transcript, 'alpha', join(project, 'logs.json')],
+  ])
+})
+
+test('ignores other files outside chats and memory', async () => {
+  const root = await home()
+  const project = join(root, '.gemini', 'tmp', 'alpha')
+  await mkdir(project, { recursive: true })
+  await writeFile(join(project, 'shell_history'), 'ls\n')
+  await writeFile(join(project, '.project_root'), '/work/alpha')
   await writeFile(join(root, '.gemini', 'settings.json'), '{}')
 
   assert.deepEqual(await discover(root), [])
