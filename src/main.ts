@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { Command, parseCommand } from '#commands'
 import { UnknownCommandError } from '#errors'
 import { home } from '#report/home'
@@ -55,13 +55,31 @@ export async function main(argv: readonly string[]): Promise<number> {
       '.gemini',
       process.env.GEMINI_CLI_HOME ? join(process.env.GEMINI_CLI_HOME, '.gemini') : undefined,
     ).map((dir) => new GeminiCliSource(homedir(), dir)),
-    new OpencodeSource(homedir()),
+    ...opencodeSources(homedir()),
   ]
   const scanner = new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))
 
   return command === Command.wipe
     ? await wipe(sources, scanner, write)
     : await scan(sources, scanner, write)
+}
+
+/**
+ * opencode's data folder moves with `XDG_DATA_HOME`. `OPENCODE_DB` names its
+ * database outright: a relative name resolves under the data folder in use, the
+ * moved one when set, and `:memory:` is never written to disk.
+ */
+function opencodeSources(home: string): OpencodeSource[] {
+  const xdg = process.env.XDG_DATA_HOME
+  const dirs = stateDirs(
+    home,
+    join('.local', 'share', 'opencode'),
+    xdg ? join(xdg, 'opencode') : undefined,
+  )
+  const named = process.env.OPENCODE_DB
+  const active = dirs[dirs.length - 1] as string
+  const database = named && named !== ':memory:' ? resolve(active, named) : undefined
+  return dirs.map((dir) => new OpencodeSource(home, dir, dir === active ? database : undefined))
 }
 
 /** The planet needs 24-bit colour and a terminal; everywhere else gets text. */
