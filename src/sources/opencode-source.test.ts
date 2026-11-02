@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { Progress } from '#report/progress'
 import { TerminalReporter } from '#report/terminal-reporter'
@@ -22,11 +22,13 @@ const needsSqlite = { skip: sqlite === null ? 'node:sqlite is not available here
 const scanner = (): Scanner => new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))
 
 /** The two tables read, laid out as opencode's migrations leave them. */
-async function plant(token: string): Promise<{ root: string; path: string }> {
+async function plant(
+  token: string,
+  where: readonly string[] = ['.local', 'share', 'opencode', 'opencode.db'],
+): Promise<{ root: string; path: string }> {
   const root = await mkdtemp(join(tmpdir(), 'whatileaked-opencode-'))
-  const dir = join(root, '.local', 'share', 'opencode')
-  await mkdir(dir, { recursive: true })
-  const path = join(dir, 'opencode.db')
+  const path = join(root, ...where)
+  await mkdir(dirname(path), { recursive: true })
 
   const db = new (sqlite as NonNullable<typeof sqlite>).DatabaseSync(path)
   db.exec(`
@@ -65,6 +67,36 @@ test('yields nothing when opencode is not installed', async () => {
   assert.deepEqual(found, [])
 })
 
+test('finds a database moved by XDG_DATA_HOME', needsSqlite, async () => {
+  const token = fakeSecret(43, 36)
+  const { root } = await plant(token, ['xdg', 'opencode', 'opencode.db'])
+
+  const { count } = await scan(new OpencodeSource(root, join(root, 'xdg', 'opencode')))
+  assert.equal(count, 1)
+})
+
+test('finds the database OPENCODE_DB names, whatever it is called', needsSqlite, async () => {
+  const token = fakeSecret(44, 36)
+  const { root, path } = await plant(token, ['work', 'agent.sqlite'])
+  const dir = join(root, '.local', 'share', 'opencode')
+
+  const found: ScanFile[] = []
+  for await (const file of new OpencodeSource(root, dir, path).discover()) found.push(file)
+  assert.deepEqual(
+    found.map((file) => file.path),
+    [path],
+  )
+  const { count } = await scan(new OpencodeSource(root, dir, path))
+  assert.equal(count, 1)
+})
+
+test('reads a database once when OPENCODE_DB names one it already lists', needsSqlite, async () => {
+  const { root, path } = await plant(fakeSecret(45, 36))
+
+  const { count } = await scan(new OpencodeSource(root, undefined, path))
+  assert.equal(count, 1)
+})
+
 test('finds a token in a stored message and names the session directory', needsSqlite, async () => {
   const token = fakeSecret(41, 36)
   const { root } = await plant(token)
@@ -84,7 +116,7 @@ test('where node:sqlite is missing, says the database was not scanned', async ()
   await mkdir(join(root, '.local', 'share', 'opencode'), { recursive: true })
   await writeFile(join(root, '.local', 'share', 'opencode', 'opencode.db'), '')
 
-  const source = new OpencodeSource(root, async () => null)
+  const source = new OpencodeSource(root, undefined, undefined, async () => null)
   const found: ScanFile[] = []
   for await (const file of source.discover()) found.push(file)
   assert.equal(found[0]?.kind, FileKind.transcript)

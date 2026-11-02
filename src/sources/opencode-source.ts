@@ -1,5 +1,5 @@
 import { basename, join } from 'node:path'
-import { FileExtension, listFiles } from '#sources/listing'
+import { FileExtension, listFiles, resolveFile } from '#sources/listing'
 import { FileKind, type ScanFile, type Source, type StoredMessage } from '#sources/source'
 import { SourceName } from '#transcript/entry'
 
@@ -8,7 +8,8 @@ export type Sqlite = typeof import('node:sqlite')
 /**
  * opencode keeps every session in one SQLite database under the XDG data
  * directory — `opencode.db`, or `opencode-<channel>.db` for a pre-release
- * channel — and never inside a repo.
+ * channel — and never inside a repo. `XDG_DATA_HOME` moves that directory, and
+ * `OPENCODE_DB` names the file outright, under any name.
  *
  * Only `session_message` is read. The same file holds provider credentials
  * opencode stores for itself, and those were never sent anywhere; reading them
@@ -21,18 +22,33 @@ export type Sqlite = typeof import('node:sqlite')
  */
 export class OpencodeSource implements Source {
   readonly name = SourceName.opencode
-  readonly #home: string
+  readonly #dir: string
+  readonly #database: string | undefined
   readonly #load: () => Promise<Sqlite | null>
 
-  constructor(home: string, load: () => Promise<Sqlite | null> = loadSqlite) {
-    this.#home = home
+  /** `dir` is `~/.local/share/opencode` or `$XDG_DATA_HOME/opencode`;
+   *  `database` is the file `OPENCODE_DB` names, when set. */
+  constructor(
+    home: string,
+    dir: string = join(home, '.local', 'share', 'opencode'),
+    database?: string,
+    load: () => Promise<Sqlite | null> = loadSqlite,
+  ) {
+    this.#dir = dir
+    this.#database = database
     this.#load = load
   }
 
   async *discover(): AsyncIterable<ScanFile> {
-    const dir = join(this.#home, '.local', 'share', 'opencode')
-    for (const file of await listFiles(dir, FileExtension.database)) {
-      const path = join(dir, file)
+    const paths = (await listFiles(this.#dir, FileExtension.database)).map((file) =>
+      join(this.#dir, file),
+    )
+    const named = this.#database
+    if (named !== undefined && !paths.includes(named) && (await resolveFile(named)) !== null) {
+      paths.push(named)
+    }
+
+    for (const path of paths) {
       const sqlite = await this.#load()
       yield {
         source: this.name,
