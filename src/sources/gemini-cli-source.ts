@@ -17,6 +17,11 @@ import { SourceName } from '#transcript/entry'
  * Sessions from before the JSONL format are a single `.json` document each,
  * converted only when resumed, so both are read.
  *
+ * Beside them, `logs.json` keeps every prompt typed in the project and each
+ * `checkpoint-<tag>.json` a conversation saved with `/chat save`. Session
+ * retention, on by default, deletes old chats and leaves both, so after a month
+ * they can be the only record of what was sent.
+ *
  * `~/.gemini/GEMINI.md` is its global instruction file, loaded into every
  * session.
  */
@@ -39,6 +44,17 @@ export class GeminiCliSource implements Source {
     for (const id of await listDirectories(root)) {
       // A hash names no project a reader would recognise; the slug does.
       const project = legacyHash.test(id) ? this.name : id
+
+      for (const file of await listFiles(join(root, id), FileExtension.json)) {
+        if (file === 'logs.json' || file.startsWith('checkpoint-')) {
+          yield {
+            source: this.name,
+            kind: FileKind.transcript,
+            path: join(root, id, file),
+            project,
+          }
+        }
+      }
 
       for (const dir of await walkDirectories(join(root, id, 'chats'))) {
         for (const extension of [FileExtension.jsonl, FileExtension.json]) {

@@ -211,7 +211,7 @@ npx whatileaked scan || echo "found something"
 | Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` · `~/.codex/AGENTS.override.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 | opencode | `~/.local/share/opencode/opencode.db` |
-| Gemini CLI | `~/.gemini/tmp/*/chats/` · `~/.gemini/tmp/*/memory/` · `~/.gemini/GEMINI.md` |
+| Gemini CLI | `~/.gemini/tmp/*/chats/` · `~/.gemini/tmp/*/logs.json` · `~/.gemini/tmp/*/checkpoint-*.json` · `~/.gemini/tmp/*/memory/` · `~/.gemini/GEMINI.md` |
 
 opencode keeps its sessions in a SQLite database. Reading it needs Node's
 built-in `node:sqlite`, which loads without a flag from Node 22.13. On an older
