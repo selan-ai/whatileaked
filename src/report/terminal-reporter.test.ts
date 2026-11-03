@@ -73,6 +73,38 @@ test('a clean scan says so plainly', () => {
   assert.match(render([]), /No credentials found/)
 })
 
+test('a scan that read nothing does not call itself clean', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 0,
+    memoryFiles: 0,
+    entries: 0,
+    skipped: 0,
+    unscannable: 0,
+    unread: [{ path: '/h/.local/share/opencode/opencode.db', reason: 'needs Node 22.13' }],
+  })
+  const output = lines.join('\n')
+
+  assert.ok(!output.includes('No credentials found'))
+  assert.match(output, /^Nothing was scanned, so this is not a clean result\.$/m)
+  assert.match(output, /Where it looks/)
+  assert.match(output, /did not scan it: needs Node 22\.13/)
+})
+
+test('one memory file read is enough for a clean result', () => {
+  const lines: string[] = []
+  new TerminalReporter((line) => lines.push(line)).report([], {
+    transcripts: 0,
+    memoryFiles: 1,
+    entries: 0,
+    skipped: 0,
+    unscannable: 0,
+    unread: [],
+  })
+
+  assert.match(lines.join('\n'), /No credentials found/)
+})
+
 test('entries the engine refused are surfaced, not swallowed', () => {
   const lines: string[] = []
   new TerminalReporter((line) => lines.push(line)).report([finding], {

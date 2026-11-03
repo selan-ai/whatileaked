@@ -184,7 +184,8 @@ file stays valid so your agent can still read its own history.
 | --- | --- | --- |
 | `command not found: npx` | Node.js isn't installed. | Install it from [nodejs.org](https://nodejs.org). |
 | `unknown command "..." — expected "scan" or "wipe"` | A typo. | Check the spelling. |
-| `scanned 0 transcripts` | No agent history where it looked. | You may not use Claude Code or Codex, or history lives elsewhere. See *Where it looks*. |
+| `Nothing was scanned, so this is not a clean result.` | It found no agent history where it looks. | Your agent may not be supported yet, or keeps its history somewhere else. See *Where it looks*. |
+| `Found … but did not scan it: …` | That file was found but could not be read, for the reason given — an opencode database on Node older than 22.13, for one. | Use Node 22.13 or newer for opencode. For any other reason, please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
 | `N messages could not be scanned` | Some entries were unreadable and were skipped. | The count is shown so a partial scan never looks like a clean one. Please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
 | `Not confirmed. Nothing was changed.` | `wipe` didn't get the word `wipe`. | Expected. Nothing was touched. |
 | It seems stuck | A big history takes ~20 seconds. | Give it a minute before worrying. |

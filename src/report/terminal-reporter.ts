@@ -7,6 +7,8 @@ import { FileKind } from '#sources/source'
 
 const PROJECT_COLUMN = 22
 const FINGERPRINT_CHARS = 8
+const WHERE_IT_LOOKS =
+  'Which agents and folders it reads: "Where it looks" at github.com/selan-ai/whatileaked'
 
 /** The write function is injected so a test reads lines instead of a stream. */
 export class TerminalReporter {
@@ -32,7 +34,15 @@ export class TerminalReporter {
     this.#write('')
 
     if (totals.length === 0) {
-      this.#write(green('No credentials found.'))
+      if (stats.transcripts === 0 && stats.memoryFiles === 0) {
+        // Green "No credentials found" over zero files read is a clean verdict
+        // on nothing, and the person most likely to see it uses an agent this
+        // does not cover yet.
+        this.#write(yellow('Nothing was scanned, so this is not a clean result.'))
+        this.#write(dim(WHERE_IT_LOOKS))
+      } else {
+        this.#write(green('No credentials found.'))
+      }
       this.#write('')
       if (this.#notScanned(stats)) this.#write('')
       this.#write(dim(DISCLOSURE))
