@@ -6,7 +6,7 @@ deliberately absent. Read the source for those.
 
 ## What it is
 
-A CLI that reads local Claude Code and Codex transcripts, matches them against
+A CLI that reads the local transcripts of AI coding agents, matches them against
 the gitleaks rule set, and reports which credentials were transmitted to a
 model provider. A second command replaces those credentials with a placeholder.
 
