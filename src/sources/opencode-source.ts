@@ -11,10 +11,13 @@ export type Sqlite = typeof import('node:sqlite')
  * channel — and never inside a repo. `XDG_DATA_HOME` moves that directory, and
  * `OPENCODE_DB` names the file outright, under any name.
  *
- * Only `session_message` and `session_part` are read. Since opencode 2.2.5 an
- * assistant message's text, tool calls and tool output can live in
- * `session_part`, one row per part, while its `session_message` row keeps an
- * empty `content`. The same file holds provider credentials
+ * Only the message tables are read: `session_message` and `session_part`, and
+ * the older `message` and `part`. Since opencode 2.2.5 an assistant message's
+ * text, tool calls and tool output can live in `session_part`, one row per
+ * part, while its `session_message` row keeps an empty `content`; databases
+ * from opencode 1, and Kilo Code's to this day, keep prompts and tool output
+ * in `part`. A credential written to more than one of them is still one credential.
+ * The same file holds provider credentials
  * opencode stores for itself, and those were never sent anywhere; reading them
  * would turn "sent to a model provider" into a claim this tool cannot defend.
  *
@@ -24,7 +27,7 @@ export type Sqlite = typeof import('node:sqlite')
  * rather than count it as clean.
  */
 export class OpencodeSource implements Source {
-  readonly name = SourceName.opencode
+  readonly name: SourceName = SourceName.opencode
   readonly #dir: string
   readonly #database: string | undefined
   readonly #load: () => Promise<Sqlite | null>
@@ -88,8 +91,8 @@ async function* readMessages(
     }
 
     const messageTables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)")
-      .all('session_message', 'session_part')
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?)")
+      .all('session_message', 'session_part', 'message', 'part')
     for (const { name } of messageTables) {
       for (const row of db.prepare(`SELECT session_id, data FROM "${String(name)}"`).iterate()) {
         if (typeof row.data !== 'string') continue
@@ -100,6 +103,25 @@ async function* readMessages(
     }
   } finally {
     db.close()
+  }
+}
+
+/**
+ * Kilo Code is a fork of opencode and keeps the same database under its own
+ * name: `kilo.db`, or `kilo-<channel>.db`, in `~/.local/share/kilo` or
+ * `$XDG_DATA_HOME/kilo`, and `KILO_DB` names the file outright. Its sessions are
+ * written to the older `message` and `part` tables.
+ */
+export class KiloCodeSource extends OpencodeSource {
+  override readonly name: SourceName = SourceName['kilo-code']
+
+  constructor(
+    home: string,
+    dir: string = join(home, '.local', 'share', 'kilo'),
+    database?: string,
+    load: () => Promise<Sqlite | null> = loadSqlite,
+  ) {
+    super(home, dir, database, load)
   }
 }
 

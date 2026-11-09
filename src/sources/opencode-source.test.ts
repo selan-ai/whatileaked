@@ -11,7 +11,7 @@ import { compileRules } from '#scan/rule'
 import { Scanner } from '#scan/scanner'
 import { SECRET_RULE_SOURCES } from '#scan/secret-rules'
 import { ScanRun } from '#scan-run'
-import { loadSqlite, OpencodeSource } from '#sources/opencode-source'
+import { KiloCodeSource, loadSqlite, OpencodeSource } from '#sources/opencode-source'
 import { FileKind, type ScanFile } from '#sources/source'
 import { CONFIRMATION } from '#wipe/confirm'
 import { WipeRun } from '#wipe/wipe-run'
@@ -144,6 +144,77 @@ test('finds a token in assistant output kept in session_part', needsSqlite, asyn
   assert.match(output, /deploy-tool/)
   assert.ok(!output.includes(token))
 })
+
+/** Kilo Code's tables, as its migrations leave them: prompts and tool output
+ *  are parts of a message. */
+async function plantKilo(token: string, where: readonly string[]): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'whatileaked-kilo-'))
+  const path = join(root, ...where)
+  await mkdir(dirname(path), { recursive: true })
+
+  const db = new (sqlite as NonNullable<typeof sqlite>).DatabaseSync(path)
+  db.exec(`
+    CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL);
+    CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT NOT NULL,
+      session_id TEXT NOT NULL, data TEXT NOT NULL);
+  `)
+  db.prepare('INSERT INTO session VALUES (?, ?)').run('ses_1', '/Users/t/code/billing-api')
+  db.prepare('INSERT INTO message VALUES (?, ?, ?)').run(
+    'msg_1',
+    'ses_1',
+    JSON.stringify({ role: 'user' }),
+  )
+  db.prepare('INSERT INTO part VALUES (?, ?, ?, ?)').run(
+    'prt_1',
+    'msg_1',
+    'ses_1',
+    JSON.stringify({ type: 'text', text: `use GITHUB_TOKEN=ghp_${token}` }),
+  )
+  db.close()
+  return root
+}
+
+test('finds a token in a Kilo Code prompt and names it Kilo Code', needsSqlite, async () => {
+  const token = fakeSecret(48, 36)
+  const root = await plantKilo(token, ['.local', 'share', 'kilo', 'kilo.db'])
+
+  const { count, output } = await scan(new KiloCodeSource(root))
+  assert.equal(count, 1)
+  assert.match(output, /billing-api/)
+  assert.match(output, /kilo\.db/)
+  assert.ok(!output.includes(token))
+})
+
+test('finds a Kilo Code database moved by XDG_DATA_HOME', needsSqlite, async () => {
+  const root = await plantKilo(fakeSecret(49, 36), ['xdg', 'kilo', 'kilo-beta.db'])
+
+  const { count } = await scan(new KiloCodeSource(root, join(root, 'xdg', 'kilo')))
+  assert.equal(count, 1)
+})
+
+test(
+  'names a token kept in two tables of one database as one credential',
+  needsSqlite,
+  async () => {
+    const token = fakeSecret(50, 36)
+    const { root, path } = await plant(token)
+    const db = new (sqlite as NonNullable<typeof sqlite>).DatabaseSync(path)
+    db.exec(
+      'CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT, session_id TEXT, data TEXT NOT NULL)',
+    )
+    db.prepare('INSERT INTO part VALUES (?, ?, ?, ?)').run(
+      'prt_1',
+      'msg_1',
+      'ses_1',
+      JSON.stringify({ type: 'text', text: `deploy with GITHUB_TOKEN=ghp_${token}` }),
+    )
+    db.close()
+
+    const { output } = await scan(new OpencodeSource(root))
+    assert.match(output, /1 credential sent to a model provider/)
+  },
+)
 
 test('where node:sqlite is missing, says the database was not scanned', async () => {
   const root = await mkdtemp(join(tmpdir(), 'whatileaked-opencode-'))

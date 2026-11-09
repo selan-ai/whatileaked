@@ -16,7 +16,7 @@ import { ClaudeCodeSource } from '#sources/claude-code-source'
 import { CodexSource } from '#sources/codex-source'
 import { CursorSource } from '#sources/cursor-source'
 import { GeminiCliSource } from '#sources/gemini-cli-source'
-import { OpencodeSource } from '#sources/opencode-source'
+import { KiloCodeSource, OpencodeSource } from '#sources/opencode-source'
 import type { Source } from '#sources/source'
 import { stateDirs } from '#sources/state-dirs'
 import { TerminalPrompt } from '#wipe/confirm'
@@ -55,7 +55,8 @@ export async function main(argv: readonly string[]): Promise<number> {
       '.gemini',
       process.env.GEMINI_CLI_HOME ? join(process.env.GEMINI_CLI_HOME, '.gemini') : undefined,
     ).map((dir) => new GeminiCliSource(homedir(), dir)),
-    ...opencodeSources(homedir()),
+    ...opencodeSources(homedir(), 'opencode', process.env.OPENCODE_DB, OpencodeSource),
+    ...opencodeSources(homedir(), 'kilo', process.env.KILO_DB, KiloCodeSource),
   ]
   const scanner = new Scanner(new KeywordIndex(compileRules(SECRET_RULE_SOURCES)))
 
@@ -65,21 +66,22 @@ export async function main(argv: readonly string[]): Promise<number> {
 }
 
 /**
- * opencode's data folder moves with `XDG_DATA_HOME`. `OPENCODE_DB` names its
- * database outright: a relative name resolves under the data folder in use, the
- * moved one when set, and `:memory:` is never written to disk.
+ * opencode's data folder, and its fork Kilo Code's, moves with `XDG_DATA_HOME`.
+ * `OPENCODE_DB` (`KILO_DB`) names the database outright: a relative name
+ * resolves under the data folder in use, the moved one when set, and `:memory:`
+ * is never written to disk.
  */
-function opencodeSources(home: string): OpencodeSource[] {
+function opencodeSources(
+  home: string,
+  app: string,
+  named: string | undefined,
+  Kind: new (home: string, dir: string, database?: string) => OpencodeSource,
+): OpencodeSource[] {
   const xdg = process.env.XDG_DATA_HOME
-  const dirs = stateDirs(
-    home,
-    join('.local', 'share', 'opencode'),
-    xdg ? join(xdg, 'opencode') : undefined,
-  )
-  const named = process.env.OPENCODE_DB
+  const dirs = stateDirs(home, join('.local', 'share', app), xdg ? join(xdg, app) : undefined)
   const active = dirs[dirs.length - 1] as string
   const database = named && named !== ':memory:' ? resolve(active, named) : undefined
-  return dirs.map((dir) => new OpencodeSource(home, dir, dir === active ? database : undefined))
+  return dirs.map((dir) => new Kind(home, dir, dir === active ? database : undefined))
 }
 
 /** The planet needs 24-bit colour and a terminal; everywhere else gets text. */
