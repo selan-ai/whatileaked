@@ -5,6 +5,7 @@ export const SourceName = {
   codex: 'codex',
   cursor: 'cursor',
   'gemini-cli': 'gemini-cli',
+  'kilo-code': 'kilo-code',
   opencode: 'opencode',
 } as const
 

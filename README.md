@@ -185,7 +185,7 @@ file stays valid so your agent can still read its own history.
 | `command not found: npx` | Node.js isn't installed. | Install it from [nodejs.org](https://nodejs.org). |
 | `unknown command "..." — expected "scan" or "wipe"` | A typo. | Check the spelling. |
 | `Nothing was scanned, so this is not a clean result.` | It found no agent history where it looks. | Your agent may not be supported yet, or keeps its history somewhere else. See *Where it looks*. |
-| `Found … but did not scan it: …` | That file was found but could not be read, for the reason given — an opencode database on Node older than 22.13, for one. | Use Node 22.13 or newer for opencode. For any other reason, please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
+| `Found … but did not scan it: …` | That file was found but could not be read, for the reason given — an opencode or Kilo Code database on Node older than 22.13, for one. | Use Node 22.13 or newer for opencode and Kilo Code. For any other reason, please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
 | `N messages could not be scanned` | Some entries were unreadable and were skipped. | The count is shown so a partial scan never looks like a clean one. Please [open an issue](https://github.com/selan-ai/whatileaked/issues). |
 | `Not confirmed. Nothing was changed.` | `wipe` didn't get the word `wipe`. | Expected. Nothing was touched. |
 | It seems stuck | A big history takes ~20 seconds. | Give it a minute before worrying. |
@@ -212,14 +212,15 @@ npx whatileaked scan || echo "found something"
 | Codex | `~/.codex/sessions/` · `~/.codex/archived_sessions/` · `~/.codex/history.jsonl` · `~/.codex/AGENTS.md` · `~/.codex/AGENTS.override.md` |
 | Cursor | `~/.cursor/projects/*/agent-transcripts/` |
 | opencode | `~/.local/share/opencode/opencode.db` |
+| Kilo Code | `~/.local/share/kilo/kilo.db` |
 | Gemini CLI | `~/.gemini/tmp/*/chats/` · `~/.gemini/tmp/*/logs.json` · `~/.gemini/tmp/*/checkpoint-*.json` · `~/.gemini/tmp/*/memory/` · `~/.gemini/GEMINI.md` |
 
-opencode keeps its sessions in a SQLite database. Reading it needs Node's
+opencode and Kilo Code keep their sessions in a SQLite database. Reading it needs Node's
 built-in `node:sqlite`, which loads without a flag from Node 22.13. On an older
 Node the scan still finds the file and says, in one line, that it was not
 scanned, so a skipped database never looks clean. Only the message and part tables are
 read, and `wipe` does not rewrite the database: delete those sessions in
-opencode, and rotate.
+the agent, and rotate.
 
 Cursor keeps its older Ask-mode chats in SQLite as well, and those are not
 scanned yet. Agent transcripts are covered; Ask history is not.
@@ -227,10 +228,10 @@ scanned yet. Agent transcripts are covered; Ask history is not.
 Claude Code transcripts it set aside (`*.jsonl.superseded-*`) are scanned too.
 
 If you moved Claude Code's folder with `CLAUDE_CONFIG_DIR`, Codex's with
-`CODEX_HOME`, Gemini CLI's with `GEMINI_CLI_HOME`, or opencode's with
-`XDG_DATA_HOME`, the folder it names is scanned as well as the default one,
+`CODEX_HOME`, Gemini CLI's with `GEMINI_CLI_HOME`, or opencode's and Kilo
+Code's with `XDG_DATA_HOME`, the folder it names is scanned as well as the default one,
 which still holds every session from before the move. A database named by
-`OPENCODE_DB` is scanned too.
+`OPENCODE_DB` or `KILO_DB` is scanned too.
 
 Transcripts record credentials that were already sent. So does prompt history,
 which keeps every prompt you typed and every long paste after the session itself
