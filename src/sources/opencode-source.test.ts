@@ -111,6 +111,40 @@ test('finds a token in a stored message and names the session directory', needsS
   assert.ok(!output.includes(token))
 })
 
+test('finds a token in assistant output kept in session_part', needsSqlite, async () => {
+  const token = fakeSecret(46, 36)
+  const { root, path } = await plant(fakeSecret(47, 36))
+
+  // opencode 2.2.5+ moves assistant parts out of the message row.
+  const db = new (sqlite as NonNullable<typeof sqlite>).DatabaseSync(path)
+  db.exec(`
+    CREATE TABLE session_part (message_id TEXT NOT NULL, session_id TEXT NOT NULL,
+      ordinal INTEGER NOT NULL, type TEXT NOT NULL, call_id TEXT, data TEXT NOT NULL,
+      PRIMARY KEY (message_id, ordinal));
+  `)
+  db.prepare('INSERT INTO session_message VALUES (?, ?, ?, ?, ?)').run(
+    'msg_2',
+    'ses_1',
+    'assistant',
+    2,
+    JSON.stringify({ content: [] }),
+  )
+  db.prepare('INSERT INTO session_part VALUES (?, ?, ?, ?, ?, ?)').run(
+    'msg_2',
+    'ses_1',
+    0,
+    'tool',
+    'call_1',
+    JSON.stringify({ state: { status: 'completed', output: `GITHUB_TOKEN=ghp_${token}` } }),
+  )
+  db.close()
+
+  const { count, output } = await scan(new OpencodeSource(root))
+  assert.equal(count, 2)
+  assert.match(output, /deploy-tool/)
+  assert.ok(!output.includes(token))
+})
+
 test('where node:sqlite is missing, says the database was not scanned', async () => {
   const root = await mkdtemp(join(tmpdir(), 'whatileaked-opencode-'))
   await mkdir(join(root, '.local', 'share', 'opencode'), { recursive: true })
