@@ -217,7 +217,7 @@ npx whatileaked scan || echo "found something"
 opencode keeps its sessions in a SQLite database. Reading it needs Node's
 built-in `node:sqlite`, which loads without a flag from Node 22.13. On an older
 Node the scan still finds the file and says, in one line, that it was not
-scanned, so a skipped database never looks clean. Only the messages table is
+scanned, so a skipped database never looks clean. Only the message and part tables are
 read, and `wipe` does not rewrite the database: delete those sessions in
 opencode, and rotate.
 
