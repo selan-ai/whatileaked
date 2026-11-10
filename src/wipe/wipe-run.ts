@@ -20,6 +20,9 @@ export interface WipePlan {
 
 export interface WipeOutcome {
   planned: readonly WipePlan[]
+  /** How many files the sources found. Zero means nothing was looked
+   *  at, which is not the same as nothing to wipe. */
+  filesRead: number
   /** Databases that hold a secret, or could not be read to find out. `wipe`
    *  rewrites lines of text and leaves these exactly as they are. */
   untouched: readonly string[]
@@ -55,19 +58,16 @@ export class WipeRun {
   }
 
   async run(): Promise<WipeOutcome> {
-    const { plans, untouched } = await this.#plan()
-    if (plans.length === 0) {
-      return { planned: [], untouched, filesRewritten: 0, secretsRedacted: 0, confirmed: false }
-    }
+    const { plans, untouched, filesRead } = await this.#plan()
+    const nothing = { filesRead, untouched, filesRewritten: 0, secretsRedacted: 0 }
+    if (plans.length === 0) return { ...nothing, planned: [], confirmed: false }
 
     this.#preview(plans)
 
     const answer = await this.#prompt.ask(
       `  Type ${bold(red(CONFIRMATION))} to rewrite these files, or anything else to stop: `,
     )
-    if (answer !== CONFIRMATION) {
-      return { planned: plans, untouched, filesRewritten: 0, secretsRedacted: 0, confirmed: false }
-    }
+    if (answer !== CONFIRMATION) return { ...nothing, planned: plans, confirmed: false }
 
     let filesRewritten = 0
     let secretsRedacted = 0
@@ -76,15 +76,28 @@ export class WipeRun {
       filesRewritten++
     }
 
-    return { planned: plans, untouched, filesRewritten, secretsRedacted, confirmed: true }
+    return {
+      planned: plans,
+      filesRead,
+      untouched,
+      filesRewritten,
+      secretsRedacted,
+      confirmed: true,
+    }
   }
 
-  async #plan(): Promise<{ plans: readonly WipePlan[]; untouched: readonly string[] }> {
+  async #plan(): Promise<{
+    plans: readonly WipePlan[]
+    untouched: readonly string[]
+    filesRead: number
+  }> {
     const plans: WipePlan[] = []
     const untouched: string[] = []
+    let filesRead = 0
 
     for (const source of this.#sources) {
       for await (const file of source.discover()) {
+        filesRead++
         if (file.messages !== undefined) {
           if (!(await this.#holdsSecret(file.messages))) continue
           untouched.push(file.path)
@@ -107,7 +120,7 @@ export class WipeRun {
       }
     }
 
-    return { plans, untouched }
+    return { plans, untouched, filesRead }
   }
 
   /** True for a database that cannot be read: it may hold one, and saying

@@ -7,7 +7,7 @@ import { FileKind } from '#sources/source'
 
 const PROJECT_COLUMN = 22
 const FINGERPRINT_CHARS = 8
-const WHERE_IT_LOOKS =
+export const WHERE_IT_LOOKS =
   'Which agents and folders it reads: "Where it looks" at github.com/selan-ai/whatileaked'
 
 /** The write function is injected so a test reads lines instead of a stream. */
