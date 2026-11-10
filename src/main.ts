@@ -6,7 +6,7 @@ import { home } from '#report/home'
 import { plural, shorten } from '#report/paths'
 import { Progress } from '#report/progress'
 import { bold, cyan, dim, green, red, yellow } from '#report/style'
-import { TerminalReporter } from '#report/terminal-reporter'
+import { TerminalReporter, WHERE_IT_LOOKS } from '#report/terminal-reporter'
 import { KeywordIndex } from '#scan/keyword-index'
 import { compileRules } from '#scan/rule'
 import { Scanner } from '#scan/scanner'
@@ -126,6 +126,12 @@ async function wipe(
 
   if (outcome.planned.length === 0) {
     if (outcome.untouched.length > 0) return 1
+    if (outcome.filesRead === 0) {
+      // Same overclaim scan avoids: a green verdict over zero files read.
+      write(yellow('  Nothing was scanned, so this is not a clean result.'))
+      write(dim(`  ${WHERE_IT_LOOKS}`))
+      return 0
+    }
     write(green('  No credentials found. Nothing to wipe.'))
     return 0
   }

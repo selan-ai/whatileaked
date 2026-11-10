@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync } from 'node:fs'
 import { chmod, lstat, mkdir, mkdtemp, readFile, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -124,6 +126,27 @@ test('never asks when there is nothing to wipe', async () => {
   assert.equal(prompt.asked, 0)
   assert.deepEqual(outcome.planned, [])
   assert.equal(outcome.confirmed, false)
+})
+
+test('counts the files it read, clean ones included', async () => {
+  const empty = await mkdtemp(join(tmpdir(), 'whatileaked-wipe-'))
+  assert.equal((await run(empty, new ScriptedPrompt(CONFIRMATION)).run()).filesRead, 0)
+
+  const { root } = await home('nothing sensitive here')
+  assert.equal((await run(root, new ScriptedPrompt(CONFIRMATION)).run()).filesRead, 1)
+})
+
+test('wipe over an empty home says nothing was scanned, not that it is clean', () => {
+  // The verdict is printed by the composition root, so only the real command shows it.
+  const root = mkdtempSync(join(tmpdir(), 'whatileaked-wipe-'))
+  const env: NodeJS.ProcessEnv = { PATH: process.env.PATH, HOME: root, NO_COLOR: '1' }
+  const cli = join(import.meta.dirname, '..', 'cli.ts')
+
+  const result = spawnSync(process.execPath, [cli, 'wipe'], { env, encoding: 'utf8' })
+
+  assert.equal(result.status, 0)
+  assert.match(result.stdout, /Nothing was scanned, so this is not a clean result\./)
+  assert.doesNotMatch(result.stdout, /No credentials found/)
 })
 
 test('wipes a secret hidden inside a base64 blob', async () => {
